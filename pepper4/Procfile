@@ -1,1 +1,1 @@
-web: gunicorn pepper4.app:app
+echo "web: gunicorn pepper4.app:app" > Procfile
