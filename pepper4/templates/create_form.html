@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}Create Form - Google Forms Clone{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg border-0 rounded-4">
+                <div class="card-header bg-primary text-white rounded-top-4">
+                    <h3 class="mb-0"><i class="bi bi-ui-checks-grid me-2"></i>Create New Form</h3>
+                </div>
+                <div class="card-body p-4">
+                    <!-- General Info -->
+                     <form id="createFormForm" method="POST" action="{{ url_for('create_form') }}" class="needs-validation" novalidate>
+                    <h5 class="mb-3 text-primary"><i class="bi bi-info-circle me-1"></i>General Information</h5>
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Form Title</label>
+                        <input type="text" class="form-control" id="title" name="title" required placeholder="Enter a catchy title">
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description <span class="text-muted">(optional)</span></label>
+                        <textarea class="form-control" id="description" name="description" rows="2" placeholder="Describe your form's purpose"></textarea>
+                    </div>
+                    <hr>
+                    <!-- Time Settings -->
+                    <h5 class="mb-3 text-primary"><i class="bi bi-clock-history me-1"></i>Active Time Window</h5>
+                    <div class="row g-2 mb-3">
+                        <div class="col">
+                            <label for="active_start_time" class="form-label">Start Time</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-clock"></i></span>
+                                <input type="time" class="form-control" id="active_start_time" name="active_start_time">
+                            </div>
+                        </div>
+                        <div class="col">
+                            <label for="active_end_time" class="form-label">End Time</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-clock"></i></span>
+                                <input type="time" class="form-control" id="active_end_time" name="active_end_time">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- ✅ New Score Input -->
+                    <div class="mb-3">
+                        <label for="score" class="form-label">Score</label>
+                        <input type="number" class="form-control" id="score" name="score" value="100" min="0">
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="requires_consent" name="requires_consent" checked>
+                        <label class="form-check-label" for="requires_consent">Require users to agree to Privacy Policy and Terms</label>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="is_external" name="is_external">
+                        <label class="form-check-label" for="is_external">This is an External Form</label>
+                    </div>
+                    <div class="mb-3" id="externalUrlGroup" style="display:none;">
+                        <label for="external_url" class="form-label">External Form URL</label>
+                        <input type="url" class="form-control" id="external_url" name="external_url" placeholder="e.g., https://forms.google.com/d/e/1FAIpQLSc...">
+                    </div>
+                    
+                    <div class="mb-3" id="allowedCountriesGroup">
+                        <label for="allowed_countries" class="form-label">Allow Access From (comma-separated ISO country codes, e.g., US, CA, GB)</label>
+                        <textarea class="form-control" id="allowed_countries" name="allowed_countries" rows="2" placeholder="Leave empty to allow all, or specify allowed countries"></textarea>
+                        <small class="form-text text-muted">Specify countries that are allowed to access this form. E.g., US, CA, DE. Leave empty for no restriction.</small>
+                    </div>
+
+                    <div class="mb-3" id="blockedCountriesGroup">
+                        <label for="blocked_countries" class="form-label">Block Access From (comma-separated ISO country codes, e.g., CN, RU)</label>
+                        <textarea class="form-control" id="blocked_countries" name="blocked_countries" rows="2" placeholder="Leave empty to block none, or specify blocked countries"></textarea>
+                        <small class="form-text text-muted">Specify countries that are blocked from accessing this form. E.g., CN, RU, IR. Leave empty for no restriction.</small>
+                    </div>
+
+                    <div id="offerFields" style="display:none;">
+                        {% if current_user.is_authenticated and current_user.is_admin %}
+                        <div class="mb-3">
+                            <label for="offer_name" class="form-label">Offer Name</label>
+                            <input type="text" class="form-control" id="offer_name" name="offer_name">
+                        </div>
+                        <div class="mb-3">
+                            <label for="offer_description" class="form-label">Offer Description</label>
+                            <textarea class="form-control" id="offer_description" name="offer_description"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="offer_status" class="form-label">Offer Status</label>
+                            <input type="text" class="form-control" id="offer_status" name="offer_status">
+                        </div>
+                        <div class="mb-3">
+                            <label for="offer_credit" class="form-label">Credit</label>
+                            <input type="number" step="0.01" class="form-control" id="offer_credit" name="offer_credit">
+                        </div>
+                        <div class="mb-3">
+                            <label for="offer_preview_url" class="form-label">Preview URL</label>
+                            <input type="url" class="form-control" id="offer_preview_url" name="offer_preview_url">
+                        </div>
+                        <div class="mb-3">
+                            <label for="offer_country" class="form-label">Country (comma-separated ISO codes)</label>
+                            <input type="text" class="form-control" id="offer_country" name="offer_country">
+                        </div>
+                        <div class="mb-3">
+                            <label for="offer_date" class="form-label">Offer Date</label>
+                            <input type="date" class="form-control" id="offer_date" name="offer_date">
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="timezone" class="form-label">Timezone</label>
+                        <select class="form-control" id="timezone" name="timezone">
+                            {% for tz in all_timezones %}
+                                <option value="{{ tz }}">{{ tz }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="redirect_links" class="form-label">External Redirect Links (one per line)</label>
+                        <textarea class="form-control" id="redirect_links" name="redirect_links" rows="3" placeholder="https://example1.com&#10;https://example2.com"></textarea>
+                        <small class="form-text text-muted">These links will be used for redirection if the form is not active. One link per line.</small>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-4">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-lg btn-secondary me-2">
+                            <i class="bi bi-arrow-left me-2"></i>Back to Forms</a>
+                        <button type="submit" class="btn btn-lg btn-success px-4">
+                            <i class="bi bi-plus-circle me-2"></i>Create Form
+                        </button>
+                    </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Spinner Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center p-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mb-0">Creating your form...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('createFormForm');
+    const submitButton = document.getElementById('submitButton');
+    const isExternalCheckbox = document.getElementById('is_external');
+    const externalUrlGroup = document.getElementById('externalUrlGroup');
+    const scoreGroup = document.getElementById('score').closest('.mb-3'); // Parent div of score input
+    const requiresConsentGroup = document.getElementById('requires_consent').closest('.mb-3.form-check'); // Parent div of requires_consent checkbox
+    const allowedCountriesGroup = document.getElementById('allowedCountriesGroup');
+    const blockedCountriesGroup = document.getElementById('blockedCountriesGroup');
+    const offerFields = document.getElementById('offerFields');
+
+    function toggleExternalFormFields() {
+        if (isExternalCheckbox.checked) {
+            externalUrlGroup.style.display = 'block';
+            scoreGroup.style.display = 'none';
+            requiresConsentGroup.style.display = 'none';
+            allowedCountriesGroup.style.display = 'none';
+            blockedCountriesGroup.style.display = 'none';
+            // Make external_url required when visible
+            document.getElementById('external_url').setAttribute('required', 'required');
+            if (offerFields) offerFields.style.display = 'block';
+        } else {
+            externalUrlGroup.style.display = 'none';
+            scoreGroup.style.display = 'block';
+            requiresConsentGroup.style.display = 'block';
+            allowedCountriesGroup.style.display = 'block';
+            blockedCountriesGroup.style.display = 'block';
+            // Remove required attribute when hidden
+            document.getElementById('external_url').removeAttribute('required');
+            if (offerFields) offerFields.style.display = 'none';
+        }
+    }
+
+    // Initial call to set visibility based on initial state
+    toggleExternalFormFields();
+
+    // Add event listener for checkbox change
+    isExternalCheckbox.addEventListener('change', toggleExternalFormFields);
+
+    form.addEventListener('submit', function(event) {
+        // Validate form
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+            form.classList.add('was-validated');
+            return;
+        }
+        
+        // Disable button to prevent multiple submissions
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Creating...';
+        
+        // Show loading modal
+        if (typeof bootstrap !== 'undefined') {
+            const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+            loadingModal.show();
+        }
+        
+        // Continue with form submission
+        form.submit();
+    });
+});
+</script>
+{% endblock %}
+
+<style>
+.card {
+  border-radius: 1.5rem;
+}
+.card-header {
+  border-radius: 1.5rem 1.5rem 0 0;
+}
+input:focus, textarea:focus, select:focus {
+  box-shadow: 0 0 0 0.2rem rgba(13,110,253,.25);
+}
+</style> 

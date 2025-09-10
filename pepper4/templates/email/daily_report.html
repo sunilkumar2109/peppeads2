@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>PepeLeads Email</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f5f5f5;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:30px 0;">
+      <tr>
+        <td align="center">
+          <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;color:#333;font-family:Arial, sans-serif;padding:30px;border-radius:10px;">
+            
+            <!-- Logo -->
+            <tr>
+              <td align="center" style="padding-bottom:20px;">
+                <table style="background:linear-gradient(135deg, #ff4d4d, #ff85a2);padding:15px;border-radius:10px;">
+                  <tr>
+                    <td align="center">
+                      <img src="https://pepeleads.com/uploads/1749728854-5822512.png" alt="PepeLeads Logo" style="width:200px;height:auto;border-radius:8px;">
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Greeting and Dynamic Daily Report -->
+            <tr>
+              <td>
+                <h2 style="font-size:26px;color:#ff4d4d;margin:0 0 10px 0;">Hello {{ user.email }},</h2>
+                <p style="font-size:15px;line-height:1.6;color:#777;margin:0 0 20px;">
+                  Here is your daily PepeLeads forms summary:
+                </p>
+                <ul style="font-size:15px;color:#333;">
+                  <li><strong>Total forms:</strong> {{ form_stats|length }}</li>
+                </ul>
+                <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; width:100%; font-family:sans-serif; margin-bottom:30px;">
+                  <tr style="background:#f8f9fa;">
+                    <th align="left">Form Title</th>
+                    <th align="left">Created At</th>
+                    <th align="left">Responses</th>
+                  </tr>
+                  {% for stat in form_stats %}
+                  <tr>
+                    <td>{{ stat.title }}</td>
+                    <td>{{ stat.created_at.strftime('%Y-%m-%d') }}</td>
+                    <td>{{ stat.response_count }}</td>
+                  </tr>
+                  {% endfor %}
+                </table>
+              </td>
+            </tr>
+
+            <!-- (You can keep the rest of your content below, or remove if not needed) -->
+            <!-- Tutorials Header, Tutorials Cards, Customer Stories, Footer, etc. -->
+            <!-- ... (rest of your template as before) ... -->
+
+            <!-- Footer -->
+            <tr>
+              <td align="center" style="padding-top:40px;font-size:14px;color:#777;">
+                <p>© 2025 PepeLeads. All rights reserved.<br>123 Business Avenue, India</p>
+                <p>
+                  <a href="#" style="color:#555;text-decoration:none;margin:0 5px;">Privacy Policy</a> |
+                  <a href="#" style="color:#555;text-decoration:none;margin:0 5px;">Terms</a> |
+                  <a href="#" style="color:#555;text-decoration:none;margin:0 5px;">Unsubscribe</a>
+                </p>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html> 

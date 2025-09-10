@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}API Tester{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>API Tester</h2>
+    <form id="apiTestForm" class="mb-3">
+        <div class="mb-2">
+            <label>API Domain:</label>
+            <input type="text" class="form-control" id="apiDomain" placeholder="https://your-domain.com">
+        </div>
+        <div class="mb-2">
+            <label>API Key:</label>
+            <input type="text" class="form-control" id="apiKey" placeholder="Your API Key">
+        </div>
+        <button type="submit" class="btn btn-primary">Test /api/forms</button>
+    </form>
+    <ul class="nav nav-tabs mb-2" id="apiTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="pretty-tab" data-bs-toggle="tab" type="button" role="tab">Pretty</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="raw-tab" data-bs-toggle="tab" type="button" role="tab">Raw</button>
+      </li>
+    </ul>
+    <div id="prettyResult" style="display:block;"></div>
+    <pre id="apiResult" style="background:#f8f9fa; padding:1em; display:none;"></pre>
+</div>
+<script>
+function renderPretty(data) {
+    // Helper to flatten nested objects
+    function flatten(obj, prefix = '', res = {}) {
+        for (let k in obj) {
+            if (!obj.hasOwnProperty(k)) continue;
+            let v = obj[k];
+            let newKey = prefix ? prefix + '.' + k : k;
+            if (Array.isArray(v)) {
+                // If array of primitives, join as string
+                if (v.length === 0 || typeof v[0] !== 'object') {
+                    res[newKey] = v.join(', ');
+                } else {
+                    // Array of objects: store as special value for rendering
+                    res[newKey] = v;
+                }
+            } else if (typeof v === 'object' && v !== null) {
+                flatten(v, newKey, res);
+            } else {
+                res[newKey] = v;
+            }
+        }
+        return res;
+    }
+    // Helper to render a table cell
+    function renderCell(key, value) {
+        if (key.endsWith('id')) return `<span class='badge bg-secondary'>${value}</span>`;
+        if (key.endsWith('status')) {
+            let color = value === 'success' ? 'success' : value === 'pending' ? 'warning text-dark' : 'secondary';
+            return `<span class='badge bg-${color}'>${value}</span>`;
+        }
+        if (key.endsWith('title') || key.endsWith('name')) return `<span class='fw-bold'>${value}</span>`;
+        if (Array.isArray(value) && value.length && typeof value[0] === 'object') {
+            // Array of objects: render as mini-table
+            let subKeys = Array.from(new Set(value.flatMap(obj => Object.keys(obj))));
+            let html = '<div class="table-responsive"><table class="table table-bordered table-sm mb-0"><thead><tr>';
+            subKeys.forEach(sk => html += `<th>${sk}</th>`);
+            html += '</tr></thead><tbody>';
+            value.forEach(row => {
+                html += '<tr>';
+                subKeys.forEach(sk => html += `<td>${row[sk] ?? ''}</td>`);
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+            return html;
+        }
+        return value;
+    }
+    if (Array.isArray(data)) {
+        if (data.length === 0) return '<div class="alert alert-info">No results.</div>';
+        // Flatten all objects and collect all unique keys
+        let flatRows = data.map(obj => flatten(obj));
+        let allKeys = Array.from(new Set(flatRows.flatMap(obj => Object.keys(obj))));
+        // Smart: Move id, title, name, status to front if present
+        ['id','title','name','status'].reverse().forEach(k => {
+            let idx = allKeys.findIndex(col => col.endsWith(k));
+            if (idx > -1) {
+                allKeys = [allKeys[idx], ...allKeys.filter(x => x !== allKeys[idx])];
+            }
+        });
+        let html = '<div class="table-responsive"><table class="table table-hover align-middle table-bordered table-sm smart-api-table"><thead class="table-light"><tr>';
+        allKeys.forEach(k => html += `<th>${k}</th>`);
+        html += '</tr></thead><tbody>';
+        flatRows.forEach(row => {
+            html += '<tr>';
+            allKeys.forEach(k => {
+                html += `<td>${renderCell(k, row[k] ?? '')}</td>`;
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+        return html;
+    } else if (typeof data === 'object' && data !== null) {
+        // Single object: flatten and show as vertical table
+        let flat = flatten(data);
+        let html = '<div class="table-responsive"><table class="table table-bordered table-sm smart-api-table"><tbody>';
+        Object.entries(flat).forEach(([k, v]) => {
+            html += `<tr><th>${k}</th><td>${renderCell(k, v)}</td></tr>`;
+        });
+        html += '</tbody></table></div>';
+        return html;
+    } else {
+        return `<div>${data}</div>`;
+    }
+}
+
+// Tab switching
+const prettyTab = document.getElementById('pretty-tab');
+const rawTab = document.getElementById('raw-tab');
+const prettyResult = document.getElementById('prettyResult');
+const apiResult = document.getElementById('apiResult');
+
+prettyTab.addEventListener('click', function() {
+    prettyTab.classList.add('active');
+    rawTab.classList.remove('active');
+    prettyResult.style.display = 'block';
+    apiResult.style.display = 'none';
+});
+rawTab.addEventListener('click', function() {
+    rawTab.classList.add('active');
+    prettyTab.classList.remove('active');
+    prettyResult.style.display = 'none';
+    apiResult.style.display = 'block';
+});
+
+document.getElementById('apiTestForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const domain = document.getElementById('apiDomain').value.trim();
+    const key = document.getElementById('apiKey').value.trim();
+    prettyResult.innerHTML = '<em>Loading...</em>';
+    apiResult.textContent = 'Loading...';
+    fetch(domain + '/api/forms', {
+        headers: { 'X-API-Key': key }
+    })
+    .then(r => r.json().then(data => ({status: r.status, data})))
+    .then(res => {
+        prettyResult.innerHTML = `<div class='mb-2'><strong>Status:</strong> ${res.status}</div>` + renderPretty(res.data);
+        apiResult.textContent = 'Status: ' + res.status + '\n' + JSON.stringify(res.data, null, 2);
+    })
+    .catch(err => {
+        prettyResult.innerHTML = `<div class='alert alert-danger'>Error: ${err}</div>`;
+        apiResult.textContent = 'Error: ' + err;
+    });
+});
+</script>
+{% endblock %} 

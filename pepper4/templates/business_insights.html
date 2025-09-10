@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Business Insights Generator</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> This tool analyzes your form responses to generate actionable business insights and ideas.
+                    </div>
+
+                    <!-- Form Selection -->
+                    <div class="mb-4">
+                        <label for="formSelect" class="form-label">Select Form to Analyze</label>
+                        <select class="form-select" id="formSelect">
+                            <option value="">Choose a form...</option>
+                            {% for form in forms %}
+                            <option value="{{ form.id }}" data-response-count="{{ form.responses|length }}">
+                                {{ form.title }} ({{ form.responses|length }} responses)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Analysis Options -->
+                    <div class="mb-4">
+                        <label class="form-label">Analysis Options</label>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="productInsights" checked>
+                                    <label class="form-check-label" for="productInsights">
+                                        Product Insights
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="marketSegments" checked>
+                                    <label class="form-check-label" for="marketSegments">
+                                        Market Segments
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="improvementIdeas" checked>
+                                    <label class="form-check-label" for="improvementIdeas">
+                                        Improvement Ideas
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Generate Button -->
+                    <button id="generateInsights" class="btn btn-primary" disabled>
+                        <i class="fas fa-magic"></i> Generate Insights
+                    </button>
+
+                    <!-- Loading Indicator -->
+                    <div class="loading-indicator" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>Generating insights with AI...</p>
+                        <p class="loading-message">This may take a few moments as we analyze your responses.</p>
+                    </div>
+
+                    <!-- Results Section -->
+                    <div id="resultsSection" class="mt-4 d-none">
+                        <h5 class="border-bottom pb-2">Generated Insights</h5>
+                        
+                        <!-- Product Insights -->
+                        <div id="productInsightsSection" class="mb-4">
+                            <h6 class="text-primary">Product Insights</h6>
+                            <div class="card">
+                                <div class="card-body" id="productInsightsContent">
+                                    <!-- Content will be populated dynamically -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Market Segments -->
+                        <div id="marketSegmentsSection" class="mb-4">
+                            <h6 class="text-primary">Market Segments</h6>
+                            <div class="card">
+                                <div class="card-body" id="marketSegmentsContent">
+                                    <!-- Content will be populated dynamically -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Improvement Ideas -->
+                        <div id="improvementIdeasSection" class="mb-4">
+                            <h6 class="text-primary">Improvement Ideas</h6>
+                            <div class="card">
+                                <div class="card-body" id="improvementIdeasContent">
+                                    <!-- Content will be populated dynamically -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Export Button -->
+                        <button id="exportInsights" class="btn btn-outline-primary">
+                            <i class="fas fa-download"></i> Export Insights
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.loading-indicator {
+    text-align: center;
+    padding: 2rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 1rem;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.loading-message {
+    color: #666;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.insight-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+
+.insight-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.insight-title {
+    color: #2c3e50;
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.insight-description {
+    color: #34495e;
+    margin-bottom: 1rem;
+}
+
+.insight-recommendations {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+}
+
+.insight-recommendations ul {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.insight-recommendations li {
+    margin-bottom: 0.5rem;
+    color: #2c3e50;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const formSelect = document.getElementById('formSelect');
+    const generateBtn = document.getElementById('generateInsights');
+    const loadingIndicator = document.querySelector('.loading-indicator');
+    const resultsSection = document.getElementById('resultsSection');
+    const exportBtn = document.getElementById('exportInsights');
+    
+    // Enable/disable generate button based on form selection
+    formSelect.addEventListener('change', function() {
+        generateBtn.disabled = !this.value;
+    });
+    
+    // Handle generate button click
+    generateBtn.addEventListener('click', async function() {
+        const formId = formSelect.value;
+        if (!formId) return;
+        
+        // Show loading state
+        loadingIndicator.style.display = 'block';
+        resultsSection.classList.add('d-none');
+        exportBtn.style.display = 'none';
+        
+        try {
+            const response = await fetch(`/form/${formId}/generate-insights`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    productInsights: document.getElementById('productInsights').checked,
+                    marketSegments: document.getElementById('marketSegments').checked,
+                    improvementIdeas: document.getElementById('improvementIdeas').checked
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Display insights
+                displayInsights(data);
+                resultsSection.classList.remove('d-none');
+                exportBtn.style.display = 'block';
+            } else {
+                alert(data.message || 'Error generating insights');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error generating insights. Please try again.');
+        } finally {
+            loadingIndicator.style.display = 'none';
+        }
+    });
+    
+    function displayInsights(data) {
+        // Product Insights
+        if (data.productInsights && data.productInsights.length > 0) {
+            const content = document.getElementById('productInsightsContent');
+            content.innerHTML = data.productInsights.map(insight => `
+                <div class="insight-card">
+                    <div class="insight-title">${insight.title}</div>
+                    <div class="insight-description">${insight.description}</div>
+                    <div class="insight-recommendations">
+                        <strong>Recommendations:</strong>
+                        <ul>
+                            ${insight.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('productInsightsSection').style.display = 'block';
+        } else {
+            document.getElementById('productInsightsSection').style.display = 'none';
+        }
+        
+        // Market Segments
+        if (data.marketSegments && data.marketSegments.length > 0) {
+            const content = document.getElementById('marketSegmentsContent');
+            content.innerHTML = data.marketSegments.map(segment => `
+                <div class="insight-card">
+                    <div class="insight-title">${segment.title}</div>
+                    <div class="insight-description">${segment.description}</div>
+                    <div class="insight-recommendations">
+                        <strong>Recommendations:</strong>
+                        <ul>
+                            ${segment.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('marketSegmentsSection').style.display = 'block';
+        } else {
+            document.getElementById('marketSegmentsSection').style.display = 'none';
+        }
+        
+        // Improvement Ideas
+        if (data.improvementIdeas && data.improvementIdeas.length > 0) {
+            const content = document.getElementById('improvementIdeasContent');
+            content.innerHTML = data.improvementIdeas.map(idea => `
+                <div class="insight-card">
+                    <div class="insight-title">${idea.title}</div>
+                    <div class="insight-description">${idea.description}</div>
+                    <div class="insight-recommendations">
+                        <strong>Recommendations:</strong>
+                        <ul>
+                            ${idea.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('improvementIdeasSection').style.display = 'block';
+        } else {
+            document.getElementById('improvementIdeasSection').style.display = 'none';
+        }
+    }
+    
+    // Handle export
+    exportBtn.addEventListener('click', function() {
+        const formId = formSelect.value;
+        if (formId) {
+            window.location.href = `/form/${formId}/export-insights`;
+        }
+    });
+});
+</script>
+{% endblock %} 

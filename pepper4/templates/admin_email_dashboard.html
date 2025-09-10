@@ -1,0 +1,45 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Email Dashboard</h2>
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>Sent At</th>
+        <th>To</th>
+        <th>Subject</th>
+        <th>Status</th>
+        <th>Offers</th>
+        <th>Preview</th>
+        <th>Error</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td>{{ log.sent_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>{{ log.to_email }}</td>
+        <td>{{ log.subject }}</td>
+        <td>{{ log.status }}</td>
+        <td>
+          {% if log.offer_ids %}
+            {{ log.offer_ids }}
+          {% endif %}
+        </td>
+        <td>
+          <button class="btn btn-sm btn-info" type="button" data-bs-toggle="collapse" data-bs-target="#body{{ log.id }}">Show</button>
+          <div class="collapse" id="body{{ log.id }}">
+            <div class="card card-body">{{ log.body|safe }}</div>
+          </div>
+        </td>
+        <td>
+          {% if log.error_message %}
+            <span class="text-danger">{{ log.error_message }}</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

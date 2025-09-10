@@ -1,0 +1,3873 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+    <h1 class="mb-4">Dashboard Overview</h1>
+
+    {# The tab navigation is now handled by the sidebar in admin_base.html #}
+    {# The content for the tabs remains here #}
+
+    <div class="tab-content" id="adminTabsContent">
+        <div class="tab-pane fade show active" id="users" role="tabpanel" aria-labelledby="users-tab">
+            <h2>All Users</h2>
+            <!-- User Filter Form -->
+            <form method="get" class="row g-2 mb-3">
+                <div class="col-auto">
+                    <input type="text" name="user_email" class="form-control" placeholder="Search by email" value="{{ user_email|default('') }}">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                </div>
+            </form>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Email</th>
+                            <th>Admin</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>
+                                {% if user.is_admin %}
+                                <span class="badge bg-success">Yes</span>
+                                {% else %}
+                                <span class="badge bg-secondary">No</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <form action="{{ url_for('toggle_admin_status', user_id=user.id) }}" method="post" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm {% if user.is_admin %}btn-outline-danger{% else %}btn-outline-success{% endif %}" {% if user.id == current_user.id %}disabled{% endif %}>
+                                        {% if user.is_admin %}Revoke Admin{% else %}Make Admin{% endif %}
+                                    </button>
+                                </form>
+                                <form action="{{ url_for('delete_user', user_id=user.id) }}" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete user {{ user.email }} and all their forms?');">
+                                    <input type="hidden" name="_method" value="DELETE">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" {% if user.id == current_user.id %}disabled{% endif %}>Delete User</button>
+                                </form>
+                                {% if not user.is_admin %}
+                                <form action="{{ url_for('impersonate_user', user_id=user.id) }}" method="post" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm btn-info" {% if user.id == current_user.id %}disabled{% endif %}>Impersonate</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="forms" role="tabpanel" aria-labelledby="forms-tab">
+            <h2>All Forms</h2>
+            <!-- Form Filter Form -->
+            <form method="get" class="row g-2 mb-3">
+                <div class="col-auto">
+                    <input type="text" name="form_title" class="form-control" placeholder="Search by title" value="{{ form_title|default('') }}">
+                </div>
+                <div class="col-auto">
+                    <label for="form_status" class="visually-hidden">Form Status</label>
+                    <select id="form_status" name="form_status" class="form-select">
+                        <option value="all" {% if form_status == 'all' %}selected{% endif %}>All Statuses</option>
+                        <option value="open" {% if form_status == 'open' %}selected{% endif %}>Open</option>
+                        <option value="closed" {% if form_status == 'closed' %}selected{% endif %}>Closed</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                </div>
+            </form>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Title</th>
+                            <th>Author</th>
+                            <th>Created At</th>
+                            <th>Status</th>
+                            <th>Form Type</th>
+                            <th>Gross Clicks</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for form in forms %}
+                        <tr>
+                            <td>{{ form.id }}</td>
+                            <td>
+                                {% if form.is_external %}
+                                <a href="{{ form.external_url }}" target="_blank">{{ form.title }} <i class="fas fa-external-link-alt ms-1"></i></a>
+                                {% else %}
+                                <a href="{{ url_for('view_form', form_id=form.id) }}">{{ form.title }}</a>
+                                {% endif %}
+                            </td>
+                            <td>{{ form.author.email }}</td>
+                            <td>{{ form.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                {% if form.is_closed %}
+                                <span class="badge bg-danger">Closed</span>
+                                {% else %}
+                                <span class="badge bg-success">Open</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if form.is_external %}
+                                <span class="badge bg-info">External</span>
+                                {% else %}
+                                <span class="badge bg-primary">Internal</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ form_gross_clicks.get(form.id, 0) }}</td>
+                            <td>
+                                <form action="{{ url_for('toggle_form_status', form_id=form.id) }}" method="post" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm {% if form.is_closed %}btn-outline-success{% else %}btn-outline-warning{% endif %}">
+                                        {% if form.is_closed %}Reopen{% else %}Close{% endif %}
+                                    </button>
+                                </form>
+                                <form action="{{ url_for('delete_form', form_id=form.id) }}" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this form and all its responses?');">
+                                    <input type="hidden" name="_method" value="DELETE">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Responses Section -->
+        <div class="tab-pane fade" id="responses" role="tabpanel" aria-labelledby="responses-tab">
+            <h2>All Responses</h2>
+            <!-- Response Filter Form -->
+            <form method="get" class="row g-2 mb-3">
+                <div class="col-auto">
+                    <input type="text" name="response_form_title" class="form-control" placeholder="Search by form title" value="{{ response_form_title|default('') }}">
+                </div>
+                <div class="col-auto">
+                    <input type="text" name="response_user_id" class="form-control" placeholder="Search by user ID" value="{{ response_user_id|default('') }}">
+                </div>
+                <div class="col-auto">
+                    <label for="response_status" class="visually-hidden">Response Status</label>
+                    <select id="response_status" name="response_status" class="form-select">
+                        <option value="all" {% if response_status == 'all' %}selected{% endif %}>All Statuses</option>
+                        <option value="success" {% if response_status == 'success' %}selected{% endif %}>Success</option>
+                        <option value="pending" {% if response_status == 'pending' %}selected{% endif %}>Pending</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <input type="date" name="response_start_date" class="form-control" placeholder="Start date" value="{{ response_start_date|default('') }}">
+                </div>
+                <div class="col-auto">
+                    <input type="date" name="response_end_date" class="form-control" placeholder="End date" value="{{ response_end_date|default('') }}">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                </div>
+            </form>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Form Title</th>
+                            <th>User ID</th>
+                            <th>Submitted At</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for response in responses %}
+                        <tr>
+                            <td>{{ response.id }}</td>
+                            <td>{{ response.form.title if response.form else '' }}</td>
+                            <td>{{ response.user_id }}</td>
+                            <td>{{ response.submitted_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                {% if response.status == 'success' %}
+                                <span class="badge bg-success">Success</span>
+                                {% elif response.status == 'pending' %}
+                                <span class="badge bg-warning text-dark">Pending</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ response.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('view_responses', form_id=response.form_id) }}" class="btn btn-sm btn-outline-info">View</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="api-tools" role="tabpanel" aria-labelledby="api-tools-tab">
+            <h2>API Tester</h2>
+            <div class="card">
+                <div class="card-body">
+                    <form id="adminApiTestForm">
+                        <div class="mb-3">
+                            <label for="apiMethod" class="form-label">HTTP Method</label>
+                            <select class="form-select" id="apiMethod">
+                                <option value="GET">GET</option>
+                                <option value="POST">POST</option>
+                                <option value="PUT">PUT</option>
+                                <option value="DELETE">DELETE</option>
+                                <option value="PATCH">PATCH</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="apiUrl" class="form-label">API Endpoint URL</label>
+                            <input type="text" class="form-control" id="apiUrl" placeholder="e.g., {{ request.url_root }}api/stats">
+                        </div>
+                        <div class="mb-3">
+                            <label for="traking_url" class="form-label">Traking URL</label>
+                            <input type="text" class="form-control" id="traking_url" placeholder="e.g., {{ request.url_root }}api/stats">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Query Parameters</label>
+                            <div id="paramsList"></div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="addParamRow()">+ Add Parameter</button>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Headers</label>
+                            <div id="headersList"></div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="addHeaderRow()">+ Add Header</button>
+                        </div>
+                        <div class="mb-3" id="bodyGroup" style="display:none;">
+                            <label for="apiBody" class="form-label">Request Body (JSON)</label>
+                            <textarea class="form-control" id="apiBody" rows="4" placeholder="{\n  \"key\": \"value\"\n}"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Send Request</button>
+                    </form>
+                </div>
+                <div class="card-footer">
+                    <h5 class="card-title">Response</h5>
+                    <ul class="nav nav-tabs mb-2" id="adminApiTabs" role="tablist">
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="admin-pretty-tab" data-bs-toggle="tab" type="button" role="tab">Pretty</button>
+                      </li>
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="admin-raw-tab" data-bs-toggle="tab" type="button" role="tab">Raw</button>
+                      </li>
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="admin-table-tab" data-bs-toggle="tab" type="button" role="tab">Table View</button>
+                      </li>
+                    </ul>
+                    <div id="adminPrettyResult" style="display:block;"></div>
+                    <pre id="apiResponseOutput" class="bg-dark text-white p-3 rounded" style="display:none;">API response will be shown here...</pre>
+                    <div id="adminTableResult" style="display:none;"></div>
+                    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css">
+                    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+                </div>
+            </div>
+        </div>
+           <div class="tab-pane fade" id="api-tools" role="tabpanel" aria-labelledby="api-tools-tab">
+            <h2>API Tester</h2>
+            <div class="card">
+                <div class="card-body">
+                    <form id="adminApiTestForm">
+                        <div class="mb-3">
+                            <label for="apiMethod" class="form-label">HTTP Method</label>
+                            <select class="form-select" id="apiMethod">
+                                <option value="GET">GET</option>
+                                <option value="POST">POST</option>
+                                <option value="PUT">PUT</option>
+                                <option value="DELETE">DELETE</option>
+                                <option value="PATCH">PATCH</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="apiUrl" class="form-label">API Endpoint URL</label>
+                            <input type="text" class="form-control" id="apiUrl" placeholder="e.g., {{ request.url_root }}api/stats">
+                        </div>
+                        <div class="mb-3">
+                            <label for="traking_url" class="form-label">Traking URL</label>
+                            <input type="text" class="form-control" id="traking_url" placeholder="e.g., {{ request.url_root }}api/stats">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Query Parameters</label>
+                            <div id="paramsList"></div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="addParamRow()">+ Add Parameter</button>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Headers</label>
+                            <div id="headersList"></div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="addHeaderRow()">+ Add Header</button>
+                        </div>
+                        <div class="mb-3" id="bodyGroup" style="display:none;">
+                            <label for="apiBody" class="form-label">Request Body (JSON)</label>
+                            <textarea class="form-control" id="apiBody" rows="4" placeholder="{\n  \"key\": \"value\"\n}"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Send Request</button>
+                    </form>
+                </div>
+                <div class="card-footer">
+                    <h5 class="card-title">Response</h5>
+                    <ul class="nav nav-tabs mb-2" id="adminApiTabs" role="tablist">
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="admin-pretty-tab" data-bs-toggle="tab" type="button" role="tab">Pretty</button>
+                      </li>
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="admin-raw-tab" data-bs-toggle="tab" type="button" role="tab">Raw</button>
+                      </li>
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="admin-table-tab" data-bs-toggle="tab" type="button" role="tab">Table View</button>
+                      </li>
+                    </ul>
+                    <div id="adminPrettyResult" style="display:block;"></div>
+                    <pre id="apiResponseOutput" class="bg-dark text-white p-3 rounded" style="display:none;">API response will be shown here...</pre>
+                    <div id="adminTableResult" style="display:none;"></div>
+                    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css">
+                    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+                </div>
+            </div>
+        </div>
+    <div class="tab-pane fade" id="domain-cheker" role="tabpanel" aria-labelledby="domain-cheker-tab">
+        <h2>Domain Checker</h2>
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">User Domain Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Website</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td>{{ user.id }}</td>
+                                <td>{{ user.email.split('@')[0] if user.email else 'N/A' }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    {% if user.website %}
+                                        <a href="{{ user.website }}" target="_blank" class="text-decoration-none">
+                                            {{ user.website }}
+                                            <i class="fas fa-external-link-alt ms-1"></i>
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted">No website</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if user.website %}
+                                        <button class="btn btn-sm btn-outline-primary" onclick="checkDomain('{{ user.website }}')">
+                                            <i class="fas fa-search"></i> Check Domain
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-outline-secondary" disabled>
+                                            <i class="fas fa-search"></i> No Domain
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer">
+                <h5 class="card-title">Domain Check Results</h5>
+                <div id="domainCheckResults" class="mt-3">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        Click "Check Domain" on any user row to see domain information.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="tab-pane fade" id="All-Offers" role="tabpanel" aria-labelledby="All-Offers-tab">
+        <h2>All Offers from URL Tester</h2>
+        
+        <!-- Bulk Scheduling Form -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Bulk Offer Scheduling</h5>
+            </div>
+            <div class="card-body">
+                <form id="bulkOfferSchedulingForm">
+                    <div class="bulk-entry-list">
+                        <div class="bulk-entry-set row g-3 align-items-end mb-3">
+                            <div class="col-md-2">
+                                <label for="bulkOfferUrl" class="form-label">URL</label>
+                                <input type="url" class="form-control" id="bulkOfferUrl" placeholder="https://example.com">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="bulkOfferStartTime" class="form-label">Start Time</label>
+                                <input type="time" class="form-control" id="bulkOfferStartTime">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="bulkOfferEndTime" class="form-label">End Time</label>
+                                <input type="time" class="form-control" id="bulkOfferEndTime">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="bulkOfferStartDate" class="form-label">Start Date</label>
+                                <input type="date" class="form-control" id="bulkOfferStartDate">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="bulkOfferEndDate" class="form-label">End Date</label>
+                                <input type="date" class="form-control" id="bulkOfferEndDate">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-center">
+                                <button type="button" class="btn btn-primary w-100 me-2" id="applyBulkOfferBtn" disabled>
+                                    Apply to Selected
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm remove-bulk-entry" style="display: none;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <button type="button" class="btn btn-secondary btn-sm" id="addMoreBulkEntries">
+                                <i class="fas fa-plus me-1"></i>Add More Entries
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+          <table class="table table-hover table-bordered align-middle" id="allOffersTable">
+            <thead class="table-primary">
+              <tr>
+                <th>
+                    <input type="checkbox" id="selectAllOffers" title="Select all offers">
+                </th>
+                <th>Row ID</th>
+                <th>Offer Name</th>
+                <th>Offer ID</th>
+                <th>Image</th>
+                <th>Target URL</th>
+                <th>Scheduling</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for offer in all_offers_from_url_tester %}
+              <tr class="offer-row" data-row-id="{{ offer.my_row_id }}">
+                <td>
+                    <input type="checkbox" class="offer-checkbox" value="{{ offer.my_row_id }}" 
+                           data-offer-name="{{ offer.offer_name }}"
+                           data-offer-id="{{ offer.offer_id }}">
+                </td>
+                <td>{{ offer.my_row_id }}</td>
+                <td>{{ offer.offer_name }}</td>
+                <td>{{ offer.offer_id }}</td>
+                <td>
+                  {% if offer.masked_image_url %}
+                    <img src="{{ offer.masked_image_url }}" alt="Offer Image" style="max-width: 80px; max-height: 50px; object-fit: contain;">
+                  {% else %}
+                    <span class="text-muted">No Image</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if offer.masked_target_url %}
+                    <a href="{{ offer.masked_target_url }}" target="_blank">{{ offer.masked_target_url }}</a>
+                  {% else %}
+                    <span class="text-muted">No URL</span>
+                  {% endif %}
+                </td>
+                <td>
+                    <button class="btn btn-outline-info btn-sm expand-scheduling-btn" 
+                            data-offer-id="{{ offer.my_row_id }}" 
+                            data-offer-name="{{ offer.offer_name }}">
+                        <i class="fas fa-clock me-1"></i>
+                        <span class="scheduling-count">0</span> Scheduled
+                    </button>
+                </td>
+              </tr>
+              <tr class="expandable-row" id="expandable-{{ offer.my_row_id }}" style="display:none;">
+                <td colspan="7">
+                  <div class="expandable-form-container">
+                    <form class="multi-entry-form">
+                      <div class="entry-list">
+                        <div class="entry-set row g-2 mb-2">
+                          <div class="col-md-2"><input type="url" class="form-control" name="url" placeholder="URL"></div>
+                          <div class="col-md-2"><input type="time" class="form-control" name="start_time" placeholder="Start Time"></div>
+                          <div class="col-md-2"><input type="time" class="form-control" name="end_time" placeholder="End Time"></div>
+                          <div class="col-md-2"><input type="date" class="form-control" name="start_date" placeholder="Start Date"></div>
+                          <div class="col-md-2"><input type="date" class="form-control" name="end_date" placeholder="End Date"></div>
+                          <div class="col-md-2 d-flex align-items-center"><button type="button" class="btn btn-danger btn-sm remove-entry">Remove</button></div>
+                        </div>
+                      </div>
+                      <button type="button" class="btn btn-secondary btn-sm add-more">Add More</button>
+                      <button type="button" class="btn btn-success btn-sm save-scheduling" data-offer-id="{{ offer.my_row_id }}">Save Scheduling</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <!-- <div class="tab-pane fade show active" id="All-Offers" role="tabpanel" aria-labelledby="All-Offers-tab">
+      <h2>All Offers from URL Tester</h2>
+      <div class="card mb-3">
+        <div class="card-body">
+          <form id="bulkInputForm" class="row g-2 align-items-end">
+            <div class="col-md-4">
+              <label for="bulkUrl" class="form-label">Redirect URL</label>
+              <input type="url" class="form-control" id="bulkUrl" placeholder="https://example.com" required>
+            </div>
+            <div class="col-md-3">
+              <label for="bulkFrom" class="form-label">Active From</label>
+              <input type="datetime-local" class="form-control" id="bulkFrom" required>
+            </div>
+            <div class="col-md-3">
+              <label for="bulkTo" class="form-label">Active To</label>
+              <input type="datetime-local" class="form-control" id="bulkTo" required>
+            </div>
+            <div class="col-md-2">
+              <button type="button" class="btn btn-primary w-100" id="applyBulkBtn" disabled>Schedule Redirect</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover table-bordered align-middle">
+          <thead class="table-primary">
+            <tr>
+              <th>
+                <input type="checkbox" id="selectAllOffers" title="Select all offers">
+              </th>
+              <th>Row ID</th>
+              <th>Offer Name</th>
+              <th>Offer ID</th>
+              <th>Image</th>
+              <th>Target URL</th>
+              <th>Redirected URL</th>
+              <th>active from</th>
+              <th>active upto</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for offer in all_offers_from_url_tester %}
+            <tr>
+              <td>
+                <input type="checkbox" class="offer-checkbox" value="{{ offer.my_row_id }}" title="Select offer {{ offer.offer_name }}">
+              </td>
+              <td>{{ offer.my_row_id }}</td>
+              <td>{{ offer.offer_name }}</td>
+              <td>{{ offer.offer_id }}</td>
+              <td>
+                {% if offer.masked_image_url %}
+                  <img src="{{ offer.masked_image_url }}" alt="Offer Image" style="max-width: 80px; max-height: 50px; object-fit: contain;">
+                {% else %}
+                  <span class="text-muted">No Image</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if offer.masked_target_url %}
+                  <a href="{{ offer.masked_target_url }}" target="_blank">{{ offer.masked_target_url }}</a>
+                {% else %}
+                  <span class="text-muted">No URL</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if offer.scheduled_redirect_urls %}
+                  {% set urls = offer.scheduled_redirect_urls | fromjson %}
+                  {% for url in urls %}
+                    <a href="{{ url }}" target="_blank">{{ url }}</a>{% if not loop.last %}, {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <span class="text-muted">No URL</span>
+                {% endif %}
+              </td>
+                <td>
+                    {% if offer.scheduled_active_from %}
+                        {{ offer.scheduled_active_from.strftime('%Y-%m-%d %H:%M:%S') }}
+                    {% else %}
+                        <span class="text-muted">No Time Alloted</span>
+                    {% endif %}
+                    </td>
+                    <td>
+                        {% if offer.scheduled_active_to %}
+                            {{ offer.scheduled_active_to.strftime('%Y-%m-%d %H:%M:%S') }}
+                        {% else %}
+                            <span class="text-muted">No Time Alloted</span>
+                        {% endif %}
+                        </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div> -->
+    
+    </div>
+    
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+<style>
+    .offer-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border: 1px solid #e9ecef;
+    }
+    .offer-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,.15)!important;
+    }
+    .offer-card .card-img-top {
+        height: 150px;
+        object-fit: cover;
+        background-color: #f8f9fa;
+    }
+    .offer-card .card-body {
+        font-size: 0.9rem;
+    }
+    .offer-card .card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    .details-list .list-group-item {
+        padding: 0.5rem 0.75rem;
+        border: none;
+        background: none;
+    }
+    .details-list i {
+        width: 20px;
+        text-align: center;
+        margin-right: 8px;
+        color: #6c757d;
+    }
+    .events-table th, .events-table td {
+        font-size: 0.85rem;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function addParamRow(key = '', value = '') {
+    const paramsList = document.getElementById('paramsList');
+    const row = document.createElement('div');
+    row.className = 'row g-1 mb-1';
+    row.innerHTML = `
+        <div class="col"><input type="text" class="form-control form-control-sm param-key" placeholder="Key" value="${key}"></div>
+        <div class="col"><input type="text" class="form-control form-control-sm param-value" placeholder="Value" value="${value}"></div>
+        <div class="col-auto"><button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.parentElement.remove()">&times;</button></div>
+    `;
+    paramsList.appendChild(row);
+}
+function addHeaderRow(key = '', value = '') {
+    const headersList = document.getElementById('headersList');
+    const row = document.createElement('div');
+    row.className = 'row g-1 mb-1';
+    row.innerHTML = `
+        <div class="col"><input type="text" class="form-control form-control-sm header-key" placeholder="Key" value="${key}"></div>
+        <div class="col"><input type="text" class="form-control form-control-sm header-value" placeholder="Value" value="${value}"></div>
+        <div class="col-auto"><button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.parentElement.remove()">&times;</button></div>
+    `;
+    headersList.appendChild(row);
+}
+// Add default X-API-Key header row
+window.addEventListener('DOMContentLoaded', function() {
+    addHeaderRow('X-API-Key', '');
+    addParamRow();
+    document.getElementById('apiMethod').addEventListener('change', function() {
+        const bodyGroup = document.getElementById('bodyGroup');
+        if (['POST','PUT','PATCH'].includes(this.value)) {
+            bodyGroup.style.display = 'block';
+        } else {
+            bodyGroup.style.display = 'none';
+        }
+    });
+});
+
+// Domain checker function
+function checkDomain(domain) {
+    // Show loading state
+    const resultsDiv = document.getElementById('domainCheckResults');
+    resultsDiv.innerHTML = `
+        <div class="d-flex justify-content-center align-items-center" style="min-height: 200px;">
+            <div class="text-center">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h6 class="text-muted">Checking domain: ${domain}</h6>
+                <p class="text-muted small">Fetching domain information from Seranking API...</p>
+            </div>
+        </div>
+    `;
+
+    // Make API call to backend
+    fetch('/admin/check-domain', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            domain: domain
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Display the results in a nice format
+            resultsDiv.innerHTML = renderDomainResults(data.data, domain);
+        } else {
+            resultsDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Error:</strong> ${data.error || 'Failed to check domain'}
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        resultsDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Network Error:</strong> Failed to connect to the server
+            </div>
+        `;
+    });
+}
+
+// Function to render domain check results
+function renderDomainResults(data, domain) {
+    let html = `
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0">
+                    <i class="fas fa-check-circle me-2"></i>
+                    Domain Analysis Results for: <strong>${domain}</strong>
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+    `;
+
+    // Add key metrics
+    if (data.domain) {
+        html += `
+            <div class="col-md-6 mb-3">
+                <div class="card h-100 border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0"><i class="fas fa-globe me-2"></i>Domain Information</h6>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Domain:</span>
+                                <strong>${data.domain || 'N/A'}</strong>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Status:</span>
+                                <span class="badge bg-success">Active</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Add SEO metrics if available
+    if (data.seo) {
+        html += `
+            <div class="col-md-6 mb-3">
+                <div class="card h-100 border-info">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0"><i class="fas fa-chart-line me-2"></i>SEO Metrics</h6>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Organic Keywords:</span>
+                                <strong>${data.seo.organic_keywords || 'N/A'}</strong>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Organic Traffic:</span>
+                                <strong>${data.seo.organic_traffic || 'N/A'}</strong>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Domain Authority:</span>
+                                <strong>${data.seo.domain_authority || 'N/A'}</strong>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Add ranking data if available
+    if (data.ranking && data.ranking.length > 0) {
+        html += `
+            <div class="col-12 mb-3">
+                <div class="card border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0"><i class="fas fa-trophy me-2"></i>Top Rankings</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Position</th>
+                                        <th>Keyword</th>
+                                        <th>Search Volume</th>
+                                        <th>URL</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+        `;
+        
+        data.ranking.slice(0, 10).forEach(rank => {
+            html += `
+                <tr>
+                    <td><span class="badge bg-primary">${rank.position || 'N/A'}</span></td>
+                    <td>${rank.keyword || 'N/A'}</td>
+                    <td>${rank.search_volume || 'N/A'}</td>
+                    <td><a href="${rank.url || '#'}" target="_blank" class="text-truncate d-inline-block" style="max-width: 200px;">${rank.url || 'N/A'}</a></td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Add raw data section
+    html += `
+        <div class="col-12">
+            <div class="card border-secondary">
+                <div class="card-header bg-secondary text-white">
+                    <h6 class="mb-0"><i class="fas fa-code me-2"></i>Raw API Response</h6>
+                </div>
+                <div class="card-body">
+                    <pre class="bg-light p-3 rounded" style="max-height: 300px; overflow-y: auto; font-size: 0.8rem;">${JSON.stringify(data, null, 2)}</pre>
+                </div>
+            </div>
+        </div>
+    `;
+
+    html += `
+                </div>
+            </div>
+        </div>
+    `;
+
+    return html;
+}
+
+function renderPretty(data) {
+    
+     // Deep search function to find all offer-related data
+    function deepSearchOffers(obj, path = '', visited = new Set()) {
+        if (!obj || typeof obj !== 'object' || visited.has(obj)) {
+            return [];
+        }
+        
+        visited.add(obj);
+        let offers = [];
+        
+        // Check if current object has offer key
+        if (obj.hasOwnProperty('offer')) {
+            offers.push({
+                offerData: obj.offer,
+                completeData: obj, // The complete parent object
+                path: path
+            });
+        }
+        
+        // Check for capitalized Offer
+        if (obj.hasOwnProperty('Offer')) {
+            offers.push({
+                offerData: obj.Offer,
+                completeData: obj,
+                path: path
+            });
+        }
+        
+        // Recursively search all properties
+        if (Array.isArray(obj)) {
+            obj.forEach((item, index) => {
+                offers = offers.concat(deepSearchOffers(item, `${path}[${index}]`, visited));
+            });
+        } else {
+            Object.keys(obj).forEach(key => {
+                const newPath = path ? `${path}.${key}` : key;
+                offers = offers.concat(deepSearchOffers(obj[key], newPath, visited));
+            });
+        }
+        
+        return offers;
+    }
+    
+    // Enhanced deep search function for specific values
+    function deepSearchValue(obj, targetKeys, visited = new Set(), maxDepth = 10, currentDepth = 0) {
+        if (!obj || typeof obj !== 'object' || visited.has(obj) || currentDepth > maxDepth) {
+            return null;
+        }
+        
+        visited.add(obj);
+        
+        // First check direct properties
+        for (let key of targetKeys) {
+            if (obj.hasOwnProperty(key) && obj[key] !== null && obj[key] !== undefined && obj[key] !== '') {
+                let value = obj[key];
+                if (typeof value === 'string') {
+                    value = value.trim();
+                    if (value === '') continue;
+                }
+                return value;
+            }
+        }
+        
+        // Then recursively search all nested objects
+        if (Array.isArray(obj)) {
+            for (let item of obj) {
+                const result = deepSearchValue(item, targetKeys, visited, maxDepth, currentDepth + 1);
+                if (result !== null) return result;
+            }
+        } else {
+            for (let key of Object.keys(obj)) {
+                const result = deepSearchValue(obj[key], targetKeys, visited, maxDepth, currentDepth + 1);
+                if (result !== null) return result;
+            }
+        }
+        
+        return null;
+    }
+    
+    // Enhanced function to search for nested values with dot notation and deep search
+    function deepSearchNestedValue(obj, paths, visited = new Set(), maxDepth = 10, currentDepth = 0) {
+        if (!obj || typeof obj !== 'object' || visited.has(obj) || currentDepth > maxDepth) {
+            return null;
+        }
+        
+        visited.add(obj);
+        
+        // First try dot notation paths
+        for (let path of paths) {
+            let current = obj;
+            let keys = path.split('.');
+            let success = true;
+            
+            for (let key of keys) {
+                if (current && typeof current === 'object' && current.hasOwnProperty(key)) {
+                    current = current[key];
+                } else {
+                    success = false;
+                    break;
+                }
+            }
+            
+            if (success && current !== null && current !== undefined && current !== '') {
+                if (Array.isArray(current)) {
+                    return current.length > 0 ? current.join(', ') : null;
+                }
+                return current;
+            }
+        }
+        
+        // Then do deep search for the last part of each path
+        const simpleKeys = paths.map(path => path.split('.').pop()).filter(Boolean);
+        const deepResult = deepSearchValue(obj, simpleKeys, new Set(), maxDepth, currentDepth);
+        if (deepResult !== null) return deepResult;
+        
+        // Finally, recursively search nested objects
+        if (Array.isArray(obj)) {
+            for (let item of obj) {
+                const result = deepSearchNestedValue(item, paths, visited, maxDepth, currentDepth + 1);
+                if (result !== null) return result;
+            }
+        } else {
+            for (let key of Object.keys(obj)) {
+                const result = deepSearchNestedValue(obj[key], paths, visited, maxDepth, currentDepth + 1);
+                if (result !== null) return result;
+            }
+        }
+        
+        return null;
+    }
+    
+    // Function to safely extract values with deep search capability
+    function extractValueDeep(obj, possibleKeys, fallback = 'N/A') {
+        if (!obj || typeof obj !== 'object') return fallback;
+        
+        const result = deepSearchValue(obj, possibleKeys, new Set());
+        return result !== null ? result : fallback;
+    }
+    
+    // Enhanced function to render any data type in a readable format
+    function renderDataStructure(data, depth = 0) {
+        const indent = '  '.repeat(depth);
+        const maxDepth = 10; // Prevent infinite recursion
+        
+        if (depth > maxDepth) {
+            return '<span class="text-warning">[Max depth reached]</span>';
+        }
+        
+        if (data === null) {
+            return '<span class="text-muted">null</span>';
+        }
+        
+        if (data === undefined) {
+            return '<span class="text-muted">undefined</span>';
+        }
+        
+        if (typeof data === 'string') {
+            // Handle URLs
+            if (data.startsWith('http://') || data.startsWith('https://')) {
+                return `<a href="${data}" target="_blank" class="text-primary text-decoration-none">${data}</a>`;
+            }
+            // Handle HTML content
+            if (data.includes('<') && data.includes('>')) {
+                const cleanText = data.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').trim();
+                return `
+                    <div>
+                        <div class="text-muted small">Raw HTML:</div>
+                        <div class="bg-light p-2 rounded small" style="max-height: 100px; overflow-y: auto;">${data}</div>
+                        <div class="text-muted small mt-1">Clean text:</div>
+                        <div>${cleanText}</div>
+                    </div>
+                `;
+            }
+            return `<span class="text-success">"${data}"</span>`;
+        }
+        
+        if (typeof data === 'number') {
+            return `<span class="text-info">${data}</span>`;
+        }
+        
+        if (typeof data === 'boolean') {
+            return `<span class="text-${data ? 'success' : 'danger'}">${data}</span>`;
+        }
+        
+        if (Array.isArray(data)) {
+            if (data.length === 0) {
+                return '<span class="text-muted">[]</span>';
+            }
+            
+            let html = `<div class="border-start border-2 border-secondary ps-3 ms-2">`;
+            html += `<div class="text-muted small mb-2">Array (${data.length} items):</div>`;
+            
+            data.forEach((item, index) => {
+                html += `
+                    <div class="mb-2">
+                        <span class="badge bg-secondary me-2">${index}</span>
+                        ${renderDataStructure(item, depth + 1)}
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            return html;
+        }
+        
+        if (typeof data === 'object') {
+            const keys = Object.keys(data);
+            if (keys.length === 0) {
+                return '<span class="text-muted">{}</span>';
+            }
+            
+            let html = `<div class="border-start border-2 border-primary ps-3 ms-2">`;
+            html += `<div class="text-muted small mb-2">Object (${keys.length} properties):</div>`;
+            
+            keys.forEach(key => {
+                html += `
+                    <div class="mb-2">
+                        <div class="d-flex align-items-start">
+                            <strong class="text-primary me-2 flex-shrink-0">${key}:</strong>
+                            <div class="flex-grow-1">
+                                ${renderDataStructure(data[key], depth + 1)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            return html;
+        }
+        
+        return `<span class="text-muted">${String(data)}</span>`;
+    }
+    
+    // Helper function to extract country codes from name
+  // Helper function to extract country codes from name
+function extractCountriesFromName(name) {
+    if (!name || typeof name !== 'string') return [];
+    
+    // Common country codes - expand as needed
+    const validCountryCodes = new Set([
+        'US', 'CA', 'GB', 'AU', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'CH', 'AT', 'SE', 'NO', 'DK', 'FI',
+        'PL', 'CZ', 'SK', 'HU', 'RO', 'BG', 'HR', 'SI', 'EE', 'LV', 'LT', 'PT', 'GR', 'IE', 'LU',
+        'MT', 'CY', 'BR', 'MX', 'AR', 'CL', 'CO', 'PE', 'VE', 'EC', 'BO', 'PY', 'UY', 'GY', 'SR',
+        'JP', 'KR', 'CN', 'IN', 'TH', 'VN', 'MY', 'SG', 'PH', 'ID', 'TW', 'HK', 'MO', 'BD', 'PK',
+        'LK', 'NP', 'MM', 'KH', 'LA', 'BN', 'MN', 'KZ', 'UZ', 'TM', 'TJ', 'KG', 'AF', 'IR', 'IQ',
+        'TR', 'SA', 'AE', 'QA', 'BH', 'KW', 'OM', 'YE', 'JO', 'LB', 'SY', 'IL', 'PS', 'EG', 'LY',
+        'TN', 'DZ', 'MA', 'SD', 'ET', 'KE', 'UG', 'TZ', 'RW', 'BI', 'DJ', 'SO', 'ER', 'SS', 'CF',
+        'TD', 'CM', 'NG', 'NE', 'BF', 'ML', 'SN', 'GM', 'GW', 'GN', 'SL', 'LR', 'CI', 'GH', 'TG',
+        'BJ', 'GA', 'GQ', 'ST', 'AO', 'CD', 'CG', 'ZM', 'ZW', 'BW', 'NA', 'SZ', 'LS', 'MW', 'MZ',
+        'MG', 'MU', 'SC', 'KM', 'ZA', 'RU', 'UA', 'BY', 'MD', 'GE', 'AM', 'AZ', 'AL', 'BA', 'ME',
+        'MK', 'RS', 'XK', 'IS', 'FO'
+    ]);
+    
+    // Split by multiple separators: underscore, hyphen, slash, pipe, comma, semicolon, space
+    const parts = name.split(/[_\-\/\|,;\s]+/);
+    
+    // Get the last few parts that could be country codes
+    const countryCodes = [];
+    
+    for (let i = parts.length - 1; i >= 0; i--) {
+        const part = parts[i].trim();
+        
+        // Skip empty parts
+        if (!part) continue;
+        
+        // Check if this part is exactly 2 capital letters AND a valid country code
+        if (/^[A-Z]{2}$/.test(part) && validCountryCodes.has(part)) {
+            countryCodes.unshift(part); // Add to beginning to maintain order
+        } else {
+            // Stop when we encounter a part that's not a valid country code
+          //  break;
+        }
+    }
+    
+    return countryCodes;
+}
+    
+    // Function to create offer card
+    function createOfferCard(offerInfo, index) {
+        const { offerData, completeData, path } = offerInfo;
+        const modalId = `offer-modal-${index}`;
+        
+        // Enhanced extraction with deep search - search both offerData and completeData thoroughly
+        const name = extractValueDeep(offerData, ['name', 'title', 'offer_name', 'campaign_name', 'display_name', 'label']) || 
+                     extractValueDeep(completeData, ['name', 'title', 'offer_name', 'campaign_name', 'display_name', 'label']) || 
+                     'Unnamed Offer';
+        
+        const id = extractValueDeep(offerData, ['id', 'offer_id', 'campaign_id', 'affiliate_id', 'external_id', 'tracking_id']) || 
+                   extractValueDeep(completeData, ['id', 'offer_id', 'campaign_id', 'affiliate_id', 'external_id', 'tracking_id']) || 
+                   'N/A';
+        
+        const image = extractValueDeep(offerData, ['image', 'image_url', 'thumbnail', 'icon', 'preview_url', 'logo', 'banner', 'creative_url']) || 
+                      extractValueDeep(completeData, ['image', 'image_url', 'thumbnail', 'icon', 'preview_url', 'logo', 'banner', 'creative_url']) || 
+                      '';
+        
+        const description = extractValueDeep(offerData, ['description', 'desc', 'summary', 'details', 'short_description', 'long_description', 'content', 'text']) || 
+                           extractValueDeep(completeData, ['description', 'desc', 'summary', 'details', 'short_description', 'long_description', 'content', 'text']) || 
+                           '';
+        
+        // Enhanced payout search with deep search
+        const payout = deepSearchNestedValue(completeData, [
+            'payout.usd', 'payout.amount', 'payout.value', 'payout.price', 'payout', 
+            'default_payout', 'commission', 'reward', 'price', 'cost', 'revenue',
+            'offer.payout', 'offer.payout.usd', 'offer.payout.amount',
+            'payment.amount', 'payment.value', 'earnings', 'cpa', 'cpc', 'cpm'
+        ]) || 'N/A';
+        
+        // Enhanced countries search with deep search
+        let countries = deepSearchNestedValue(completeData, [
+            'geo_targeting.allowed_countries', 'geo_targeting.countries', 'countries', 'allowed_countries',
+            'targeting.countries', 'targeting.geo', 'geo.countries', 'country', 'country_code',
+            'offer.countries', 'offer.geo_targeting.allowed_countries', 'offer.targeting.countries',
+            'location.countries', 'regions', 'territories', 'allowed_regions'
+        ]) || 'N/A';
+        
+        // If no countries found in data, try to extract from name
+        if (countries === 'N/A' || !countries || countries === '') {
+            const extractedCountries = extractCountriesFromName(name);
+            if (extractedCountries.length > 0) {
+                countries = extractedCountries.join(', ');
+            }
+        }
+        
+        // Default image with "No Image Available" text
+      const defaultImage = 'https://offery.io/files/offers/offer-9mzcxpqvm.png';
+
+
+        const finalImage = image || defaultImage;
+        
+        // Clean description
+        const cleanDesc = description.toString().replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').trim();
+        const shortDesc = cleanDesc.length > 100 ? cleanDesc.substring(0, 100) + '...' : cleanDesc;
+        
+        return `
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100 shadow-sm offer-card" 
+                     style="cursor: pointer; transition: all 0.3s ease; border-radius: 12px; overflow: hidden;"
+                     onclick="document.getElementById('${modalId}').style.display='flex'"
+                     onmouseover="this.style.transform='translateY(-8px) scale(1.02)'; this.style.boxShadow='0 15px 35px rgba(0,0,0,0.2)'"
+                     onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.1)'">
+                    
+                    <div class="position-relative">
+                        <img src="${finalImage}" class="card-img-top" alt="${name}" 
+                             style="height: 180px; object-fit: cover; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" 
+                             onerror="this.src='${defaultImage}'">
+                        <div class="position-absolute top-0 start-0 m-2">
+                            <span class="badge bg-dark bg-opacity-75">ID: ${id}</span>
+                        </div>
+                        <div class="position-absolute bottom-0 start-0 end-0 bg-gradient" 
+                             style="background: linear-gradient(transparent, rgba(0,0,0,0.7)); height: 60px;"></div>
+                    </div>
+                    
+                    <div class="card-body d-flex flex-column p-3">
+                        <h5 class="card-title fw-bold mb-2" style="color: #2c3e50; line-height: 1.2;">${name}</h5>
+                        
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <div class="text-center p-2 rounded" style="background: linear-gradient(135deg, #28a745, #20c997);">
+                                    <div class="fw-bold text-white">${payout.toString().includes('$') ? payout : '$' + payout}</div>
+                                    <small class="text-white opacity-75">Payout</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center p-2 rounded" style="background: linear-gradient(135deg, #007bff, #6f42c1);">
+                                    <div class="fw-bold text-white text-truncate" title="${countries}">${countries}</div>
+                                    <small class="text-white opacity-75">Countries</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        ${shortDesc ? `<p class="card-text text-muted small mb-3 flex-grow-1" style="line-height: 1.4;">${shortDesc}</p>` : ''}
+                        
+                        <div class="mt-auto">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-primary fw-bold">👆 Click to view all data</small>
+                                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center" 
+                                     style="width: 30px; height: 30px;">
+                                    <span class="text-white">→</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Full Screen Modal -->
+                <div id="${modalId}" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+                    <div class="bg-white rounded-3 shadow-lg" style="width: 95%; max-width: 1000px; max-height: 95vh; overflow: hidden; display: flex; flex-direction: column;">
+                        
+                        <!-- Header -->
+                        <div class="p-4 border-bottom" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                            <div class="d-flex justify-content-between align-items-center text-white">
+                                <div>
+                                    <h4 class="mb-1">📊 Complete Offer Data</h4>
+                                    <p class="mb-0 opacity-75">ID: ${id} | Found at: ${path || 'root'}</p>
+                                </div>
+                                <button class="btn btn-link text-white p-0 fs-2 lh-1" 
+                                        onclick="document.getElementById('${modalId}').style.display='none'"
+                                        style="text-decoration: none; opacity: 0.8;"
+                                        onmouseover="this.style.opacity='1'"
+                                        onmouseout="this.style.opacity='0.8'">×</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Content -->
+                        <div class="flex-grow-1 overflow-auto p-4" style="font-size: 0.9em;">
+                            
+                            <!-- Offer Summary -->
+                            <div class="row mb-4">
+                                <div class="col-md-9">
+                                    <h5 class="text-primary mb-2">${name}</h5>
+                                    <div class="row g-3">
+                                        <div class="col-md-3">
+                                            <div class="bg-light p-2 rounded text-center">
+                                                <div class="fw-bold text-success">${payout.toString().includes('$') ? payout : '$' + payout}</div>
+                                                <small class="text-muted">Payout</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="bg-light p-2 rounded text-center">
+                                                <div class="fw-bold text-info">${countries}</div>
+                                                <small class="text-muted">Countries</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="bg-light p-2 rounded text-center">
+                                                <div class="fw-bold text-secondary">${Object.keys(completeData).length}</div>
+                                                <small class="text-muted">Total Data Fields</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 text-end">
+                                    <img src="${finalImage}" alt="${name}" class="img-fluid rounded" 
+                                         style="max-height: 100px; max-width: 100%;" 
+                                         onerror="this.src='${defaultImage}'">
+                                </div>
+                            </div>
+                            
+                            <hr class="my-4">
+                            
+                            <!-- Complete Data Structure -->
+                            <div class="mb-3">
+                                <h6 class="text-secondary mb-3">🔍 Complete Data Structure:</h6>
+                                <div class="bg-light rounded p-3" style="max-height: 500px; overflow-y: auto; border: 1px solid #dee2e6;">
+                                    ${renderDataStructure(completeData)}
+                                </div>
+                            </div>
+                            
+                        </div>
+                        
+                        <!-- Footer -->
+                        <div class="border-top p-3 bg-light">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">Data structure rendered with enhanced deep search support</small>
+                                <button class="btn btn-primary" onclick="document.getElementById('${modalId}').style.display='none'">Close</button>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Find all offers
+    const allOffers = deepSearchOffers(data);
+    
+    if (allOffers.length === 0) {
+        return `
+            <div class="alert alert-warning border-0 shadow-sm" style="border-radius: 12px;">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="bg-warning rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                        <span class="text-white">⚠️</span>
+                    </div>
+                    <div>
+                        <h6 class="mb-0">No offers found in the data</h6>
+                        <small class="text-muted">Searched for "offer" or "Offer" keys at all nesting levels</small>
+                    </div>
+                </div>
+                <details class="mt-3">
+                    <summary class="btn btn-sm btn-outline-warning">🔍 View raw data structure</summary>
+                    <div class="mt-3 p-3 bg-light rounded" style="max-height: 400px; overflow-y: auto;">
+                        ${renderDataStructure(data)}
+                    </div>
+                </details>
+            </div>
+        `;
+    }
+    
+    // Create header
+const headerHtml = `
+    <div class="mb-4 p-4 rounded-3 shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h3 class="mb-2">🎯 Offers Found</h3>
+                <p class="mb-0 opacity-75">Discovered ${allOffers.length} offer${allOffers.length !== 1 ? 's' : ''} with enhanced deep search. Click any card to view complete data.</p>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <div class="bg-white text-dark rounded-pill px-3 py-2 d-inline-block shadow-sm">
+                    <strong class="fs-4">${allOffers.length}</strong>
+                    <small class="ms-1">offers</small>
+                </div>
+            </div>
+        </div>
+    </div>
+`;
+
+    
+    // Generate cards
+    const cardsHtml = allOffers.map((offer, index) => createOfferCard(offer, index)).join('');
+    
+    return headerHtml + `<div class="row">${cardsHtml}</div>`;
+}
+// let trackingUrlInput=document.getElementById('traking_url').value.trim();
+function renderTable(data) {
+    // Deep search function to find all offer-related data
+    // Add this line after the existing variable declarations
+    let trackingUrlInput = document.getElementById('traking_url')?.value.trim() || "";
+   // const url=updateOfferId(trackingUrlInput,id);
+    // Now use trackingUrlInput safely inside your logic
+    console.log("Tracking URL input:", trackingUrlInput); 
+    let selectedOfferIndices = new Set();
+    function deepSearchOffers(obj, path = '', visited = new Set()) {
+        if (!obj || typeof obj !== 'object' || visited.has(obj)) {
+            return [];
+        }
+        visited.add(obj);
+        let offers = [];
+        // Check if current object has offer key
+        if (obj.hasOwnProperty('offer')) {
+            offers.push({
+                offerData: obj.offer,
+                completeData: obj, // The complete parent object
+                path: path
+            });
+        }
+        // Check for capitalized Offer
+        if (obj.hasOwnProperty('Offer')) {
+            offers.push({
+                offerData: obj.Offer,
+                completeData: obj,
+                path: path
+            });
+        }
+        
+        // Recursively search all properties
+        if (Array.isArray(obj)) {
+            obj.forEach((item, index) => {
+                offers = offers.concat(deepSearchOffers(item, `${path}[${index}]`, visited));
+            });
+        } else {
+            Object.keys(obj).forEach(key => {
+                const newPath = path ? `${path}.${key}` : key;
+                offers = offers.concat(deepSearchOffers(obj[key], newPath, visited));
+            });
+        }
+        return offers;
+    }
+
+    // Enhanced deep search function for specific values
+    function deepSearchValue(obj, targetKeys, visited = new Set(), maxDepth = 10, currentDepth = 0) {
+        if (!obj || typeof obj !== 'object' || visited.has(obj) || currentDepth > maxDepth) {
+            return null;
+        }
+        visited.add(obj);
+        // First check direct properties
+        for (let key of targetKeys) {
+            if (obj.hasOwnProperty(key) && obj[key] !== null && obj[key] !== undefined && obj[key] !== '') {
+                let value = obj[key];
+                if (typeof value === 'string') {
+                    value = value.trim();
+                    if (value === '') continue;
+                }
+                return value;
+            }
+        }
+        // Then recursively search all nested objects
+        if (Array.isArray(obj)) {
+            for (let item of obj) {
+                const result = deepSearchValue(item, targetKeys, visited, maxDepth, currentDepth + 1);
+                if (result !== null) return result;
+            }
+        } else {
+            for (let key of Object.keys(obj)) {
+                const result = deepSearchValue(obj[key], targetKeys, visited, maxDepth, currentDepth + 1);
+                if (result !== null) return result;
+            }
+        }
+        return null;
+    }
+
+    // Enhanced function to search for nested values with dot notation and deep search
+    function deepSearchNestedValue(obj, paths, visited = new Set(), maxDepth = 10, currentDepth = 0) {
+        if (!obj || typeof obj !== 'object' || visited.has(obj) || currentDepth > maxDepth) {
+            return null;
+        }
+        visited.add(obj);
+        // First try dot notation paths
+        for (let path of paths) {
+            let current = obj;
+            let keys = path.split('.');
+            let success = true;
+            for (let key of keys) {
+                if (current && typeof current === 'object' && current.hasOwnProperty(key)) {
+                    current = current[key];
+                } else {
+                    success = false;
+                    break;
+                }
+            }
+            if (success && current !== null && current !== undefined && current !== '') {
+                if (Array.isArray(current)) {
+                    return current.length > 0 ? current : null;
+                }
+                return current;
+            }
+        }
+        // Then do deep search for the last part of each path
+        const simpleKeys = paths.map(path => path.split('.').pop()).filter(Boolean);
+        const deepResult = deepSearchValue(obj, simpleKeys, new Set(), maxDepth, currentDepth);
+        if (deepResult !== null) return deepResult;
+        // Finally, recursively search nested objects
+        if (Array.isArray(obj)) {
+            for (let item of obj) {
+                const result = deepSearchNestedValue(item, paths, visited, maxDepth, currentDepth + 1);
+                if (result !== null) return result;
+            }
+        } else {
+            for (let key of Object.keys(obj)) {
+                const result = deepSearchNestedValue(obj[key], paths, visited, maxDepth, currentDepth + 1);
+                if (result !== null) return result;
+            }
+        }
+        return null;
+    }
+
+    // Function to safely extract values with deep search capability
+    function extractValueDeep(obj, possibleKeys, fallback = 'N/A') {
+        if (!obj || typeof obj !== 'object') return fallback;
+        const result = deepSearchValue(obj, possibleKeys, new Set());
+        return result !== null ? result : fallback;
+    }
+
+    // Enhanced function to render any data type in a readable format
+    function renderDataStructure(data, depth = 0) {
+        const indent = '  '.repeat(depth);
+        const maxDepth = 10; // Prevent infinite recursion
+        if (depth > maxDepth) {
+            return '<span class="text-warning">[Max depth reached]</span>';
+        }
+        if (data === null) {
+            return '<span class="text-muted">null</span>';
+        }
+        if (data === undefined) {
+            return '<span class="text-muted">undefined</span>';
+        }
+        if (typeof data === 'string') {
+            // Handle URLs
+            if (data.startsWith('http://') || data.startsWith('https://')) {
+                return `<a href="${data}" target="_blank" class="text-primary text-decoration-none">${data}</a>`;
+            }
+            // Handle HTML content
+            if (data.includes('<') && data.includes('>')) {
+                const cleanText = data.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').trim();
+                return `
+                    <div>
+                        <div class="text-muted small">Raw HTML:</div>
+                        <div class="bg-light p-2 rounded small" style="max-height: 100px; overflow-y: auto;">${data}</div>
+                        <div class="text-muted small mt-1">Clean text:</div>
+                        <div>${cleanText}</div>
+                    </div>
+                `;
+            }
+            return `<span class="text-success">"${data}"</span>`;
+        }
+        if (typeof data === 'number') {
+            return `<span class="text-info">${data}</span>`;
+        }
+        if (typeof data === 'boolean') {
+            return `<span class="text-${data ? 'success' : 'danger'}">${data}</span>`;
+        }
+        if (Array.isArray(data)) {
+            if (data.length === 0) {
+                return '<span class="text-muted">[]</span>';
+            }
+            let html = `<div class="border-start border-2 border-secondary ps-3 ms-2">`;
+            html += `<div class="text-muted small mb-2">Array (${data.length} items):</div>`;
+            data.forEach((item, index) => {
+                html += `
+                    <div class="mb-2">
+                        <span class="badge bg-secondary me-2">${index}</span>
+                        ${renderDataStructure(item, depth + 1)}
+                    </div>
+                `;
+            });
+            html += '</div>';
+            return html;
+        }
+        if (typeof data === 'object') {
+            const keys = Object.keys(data);
+            if (keys.length === 0) {
+                return '<span class="text-muted">{}</span>';
+            }
+            let html = `<div class="border-start border-2 border-primary ps-3 ms-2">`;
+            html += `<div class="text-muted small mb-2">Object (${keys.length} properties):</div>`;
+            keys.forEach(key => {
+                html += `
+                    <div class="mb-2">
+                        <div class="d-flex align-items-start">
+                            <strong class="text-primary me-2 flex-shrink-0">${key}:</strong>
+                            <div class="flex-grow-1">
+                                ${renderDataStructure(data[key], depth + 1)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            return html;
+        }
+        return `<span class="text-muted">${String(data)}</span>`;
+    }
+
+    // Use a fast-loading SVG default image (very small, inline, no text)
+    const defaultImage = 'https://offery.io/files/offers/offer-9mzcxpqvm.png';
+
+    // Find all offers
+    const allOffers = deepSearchOffers(data);
+
+    if (allOffers.length === 0) {
+        return `
+            <div class="alert alert-warning border-0 shadow-sm" style="border-radius: 12px;">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="bg-warning rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                        <span class="text-white">⚠️</span>
+                    </div>
+                    <div>
+                        <h6 class="mb-0">No offers found in the data</h6>
+                        <small class="text-muted">Searched for "offer" or "Offer" keys at all nesting levels</small>
+                    </div>
+                </div>
+                <details class="mt-3">
+                    <summary class="btn btn-sm btn-outline-warning">🔍 View raw data structure</summary>
+                    <div class="mt-3 p-3 bg-light rounded" style="max-height: 400px; overflow-y: auto;">
+                        ${renderDataStructure(data)}
+                    </div>
+                </details>
+            </div>
+        `;
+    }
+
+    // Helper to extract and format countries/country codes
+    function getCountries(completeData) {
+        let countries = deepSearchNestedValue(completeData, [
+            'geo_targeting.allowed_countries', 'geo_targeting.countries', 'countries', 'allowed_countries',
+            'targeting.countries', 'targeting.geo', 'geo.countries', 'country', 'country_code',
+            'offer.countries', 'offer.geo_targeting.allowed_countries', 'offer.targeting.countries',
+            'location.countries', 'regions', 'territories', 'allowed_regions'
+        ]);
+        
+        if (!countries) countries = [];
+        if (typeof countries === 'string') {
+            // Try to split by comma or semicolon or whitespace
+            if (countries.includes(',')) countries = countries.split(',').map(s => s.trim()).filter(Boolean);
+            else if (countries.includes(';')) countries = countries.split(';').map(s => s.trim()).filter(Boolean);
+            else if (countries.match(/^[A-Z]{2,3}$/i)) countries = [countries];
+            else countries = [countries];
+        }
+        if (Array.isArray(countries)) {
+            countries = countries.filter(Boolean);
+        } else {
+            countries = [String(countries)];
+        }
+        
+        // If no countries found in data, try to extract from name
+        if (countries.length === 0 || (countries.length === 1 && countries[0] === 'N/A')) {
+            const name = getName(completeData.offer || {}, completeData);
+            const extractedCountries = extractCountriesFromName(name);
+            if (extractedCountries.length > 0) {
+                countries = extractedCountries;
+            }
+        }
+        
+        return countries;
+    }
+
+    // Helper function to extract country codes from name
+  // Helper function to extract country codes from name
+function extractCountriesFromName(name) {
+    if (!name || typeof name !== 'string') return [];
+    
+    // Common country codes - expand as needed
+    const validCountryCodes = new Set([
+        'US', 'CA', 'GB', 'AU', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'CH', 'AT', 'SE', 'NO', 'DK', 'FI',
+        'PL', 'CZ', 'SK', 'HU', 'RO', 'BG', 'HR', 'SI', 'EE', 'LV', 'LT', 'PT', 'GR', 'IE', 'LU',
+        'MT', 'CY', 'BR', 'MX', 'AR', 'CL', 'CO', 'PE', 'VE', 'EC', 'BO', 'PY', 'UY', 'GY', 'SR',
+        'JP', 'KR', 'CN', 'IN', 'TH', 'VN', 'MY', 'SG', 'PH', 'ID', 'TW', 'HK', 'MO', 'BD', 'PK',
+        'LK', 'NP', 'MM', 'KH', 'LA', 'BN', 'MN', 'KZ', 'UZ', 'TM', 'TJ', 'KG', 'AF', 'IR', 'IQ',
+        'TR', 'SA', 'AE', 'QA', 'BH', 'KW', 'OM', 'YE', 'JO', 'LB', 'SY', 'IL', 'PS', 'EG', 'LY',
+        'TN', 'DZ', 'MA', 'SD', 'ET', 'KE', 'UG', 'TZ', 'RW', 'BI', 'DJ', 'SO', 'ER', 'SS', 'CF',
+        'TD', 'CM', 'NG', 'NE', 'BF', 'ML', 'SN', 'GM', 'GW', 'GN', 'SL', 'LR', 'CI', 'GH', 'TG',
+        'BJ', 'GA', 'GQ', 'ST', 'AO', 'CD', 'CG', 'ZM', 'ZW', 'BW', 'NA', 'SZ', 'LS', 'MW', 'MZ',
+        'MG', 'MU', 'SC', 'KM', 'ZA', 'RU', 'UA', 'BY', 'MD', 'GE', 'AM', 'AZ', 'AL', 'BA', 'ME',
+        'MK', 'RS', 'XK', 'IS', 'FO'
+    ]);
+    
+    // Split by multiple separators: underscore, hyphen, slash, pipe, comma, semicolon, space
+    const parts = name.split(/[_\-\/\|,;\s]+/);
+    
+    // Get the last few parts that could be country codes
+    const countryCodes = [];
+    
+    for (let i = parts.length - 1; i >= 0; i--) {
+        const part = parts[i].trim();
+        
+        // Skip empty parts
+        if (!part) continue;
+        
+        // Check if this part is exactly 2 capital letters AND a valid country code
+        if (/^[A-Z]{2}$/.test(part) && validCountryCodes.has(part)) {
+            countryCodes.unshift(part); // Add to beginning to maintain order
+        } else {
+            // Stop when we encounter a part that's not a valid country code
+           // break;
+        }
+    }
+    
+    return countryCodes;
+}
+
+    // Helper to extract url/preview url
+    function getUrl(offerData, completeData) {
+        let url = extractValueDeep(offerData, ['url', 'preview_url', 'link', 'offer_url', 'tracking_url', 'landing_url', 'click_url', 'demo_url', 'website']);
+        if (!url || url === 'N/A') {
+            url = extractValueDeep(completeData, ['url', 'preview_url', 'link', 'offer_url', 'tracking_url', 'landing_url', 'click_url', 'demo_url', 'website']);
+        }
+    
+        return url && url !== 'N/A' ? url : '';
+    }
+    function updateOfferId(url, newId) {
+    // Match common variations of offer ID keys
+      const regex = /(offer[_-]?id|id|offerId)=\d+/i;
+
+      if (regex.test(url)) {
+        // Replace the matched parameter with the new ID
+        return url.replace(regex, `$1=${newId}`);
+      } else {
+        // If no ID parameter is found, append it to the URL
+        const separator = url.includes('?') ? '&' : '?';
+        return `${url}${separator}offer_id=${newId}`;
+      }
+    }
+    // Helper to extract name
+    function getName(offerData, completeData) {
+        let name = extractValueDeep(offerData, ['name', 'title', 'offer_name', 'campaign_name', 'display_name', 'label']);
+        if (!name || name === 'N/A') {
+            name = extractValueDeep(completeData, ['name', 'title', 'offer_name', 'campaign_name', 'display_name', 'label']);
+        }
+        return name && name !== 'N/A' ? name : 'Unnamed Offer';
+    }
+
+    // Helper to extract id
+    function getId(offerData, completeData) {
+        let id = extractValueDeep(offerData, ['id', 'offer_id', 'campaign_id', 'affiliate_id', 'external_id', 'tracking_id']);
+        if (!id || id === 'N/A') {
+            id = extractValueDeep(completeData, ['id', 'offer_id', 'campaign_id', 'affiliate_id', 'external_id', 'tracking_id']);
+        }
+        return id && id !== 'N/A' ? id : 'N/A';
+    }
+
+    // Helper to extract image
+    function getImage(offerData, completeData) {
+        let image = extractValueDeep(offerData, ['image', 'image_url', 'thumbnail', 'icon', 'preview_url', 'logo', 'banner', 'creative_url']);
+        if (!image || image === 'N/A') {
+            image = extractValueDeep(completeData, ['image', 'image_url', 'thumbnail', 'icon', 'preview_url', 'logo', 'banner', 'creative_url']);
+        }
+        return image && image !== 'N/A' ? image : defaultImage;
+    }
+
+    // Helper to extract description
+    function getDescription(offerData, completeData) {
+        let description = extractValueDeep(offerData, ['description', 'desc', 'summary', 'details', 'short_description', 'long_description', 'content', 'text']);
+        if (!description || description === 'N/A') {
+            description = extractValueDeep(completeData, ['description', 'desc', 'summary', 'details', 'short_description', 'long_description', 'content', 'text']);
+        }
+        return description && description !== 'N/A' ? description : '';
+    }
+
+    // Helper to extract payout
+    function getPayout(completeData) {
+        let payout = deepSearchNestedValue(completeData, [
+            'payout.usd', 'payout.amount', 'payout.value', 'payout.price', 'payout', 
+            'default_payout', 'commission', 'reward', 'price', 'cost', 'revenue',
+            'offer.payout', 'offer.payout.usd', 'offer.payout.amount',
+            'payment.amount', 'payment.value', 'earnings', 'cpa', 'cpc', 'cpm'
+        ]);
+        return payout ? payout : 'N/A';
+    }
+
+    // Filter function
+    function filterOffers(offers, filters) {
+        return offers.filter(offer => {
+            const { offerData, completeData } = offer;
+            
+            // Name filter
+            if (filters.name) {
+                const name = getName(offerData, completeData).toLowerCase();
+                if (!name.includes(filters.name.toLowerCase())) {
+                    return false;
+                }
+            }
+            
+            // ID filter
+            if (filters.id) {
+                const id = getId(offerData, completeData).toLowerCase();
+                if (!id.includes(filters.id.toLowerCase())) {
+                    return false;
+                }
+            }
+            
+            // Countries filter
+            if (filters.countries) {
+                const countries = getCountries(completeData);
+                const hasMatchingCountry = countries.some(country => 
+                    country.toLowerCase().includes(filters.countries.toLowerCase())
+                );
+                if (!hasMatchingCountry) {
+                    return false;
+                }
+            }
+            
+            // Payout filter
+            if (filters.payout) {
+                const payout = getPayout(completeData);
+                const payoutNum = parseFloat(payout.toString().replace(/[^0-9.-]/g, ''));
+                if (isNaN(payoutNum) || payoutNum < parseFloat(filters.payout)) {
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+    }
+
+    // Pagination state
+    let currentPage = 1;
+    const pageSize = 10;
+    let filteredOffers = allOffers;
+    let totalPages = Math.ceil(filteredOffers.length / pageSize);
+
+    // Helper to render the table rows for the current page
+    function renderTableRows(page) {
+        const start = (page - 1) * pageSize;
+        const end = Math.min(start + pageSize, filteredOffers.length);
+        return filteredOffers.slice(start, end).map((offer, index) => {
+            const globalIndex = start + index;
+            const { offerData, completeData } = offer;
+            const id = getId(offerData, completeData);
+            const name = getName(offerData, completeData);
+            const image = getImage(offerData, completeData);
+            const countries = getCountries(completeData);
+            // const url = getUrl(offerData, completeData);
+            // const trackingUrl = document.getElementById('traking_url').value.trim();
+            const url=updateOfferId(trackingUrlInput,id);
+            const payout = getPayout(completeData);
+            
+            // Countries as badges, handle empty
+            let countriesHtml = '';
+            if (countries.length) {
+                countriesHtml = countries.map(c => `<span class="badge bg-info text-dark me-1 mb-1">${c}</span>`).join('');
+            } else {
+                countriesHtml = `<span class="text-muted">N/A</span>`;
+            }
+            
+            // URL as link or muted, only show the url string
+            let urlHtml = '';
+            if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+                urlHtml = `<a href="${url}" target="_blank" class="text-primary text-decoration-none text-truncate" style="max-width:120px;display:inline-block;">${url}</a>`;
+            } else if (url) {
+                urlHtml = `<span class="text-success text-truncate" style="max-width:120px;display:inline-block;">${url}</span>`;
+            } else {
+                urlHtml = `<span class="text-muted">N/A</span>`;
+            }
+            
+            // Image as small thumbnail
+            let imgHtml = `<img src="${image}" alt="${name}" style="width:48px;height:32px;object-fit:cover;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,0.07);" onerror="this.src='${defaultImage}'">`;
+            
+            // "View Details" button
+            let viewDetailsBtn = `<button class="btn btn-sm btn-outline-primary view-details-btn" data-offer-index="${globalIndex}">View Details</button>`;
+            
+            // Add checkbox for selection
+            // let checkbox = `<input type="checkbox" class="offer-row-checkbox" data-offer-index="${globalIndex}">`;
+            let checkbox = `<input type="checkbox" class="offer-row-checkbox" data-offer-index="${globalIndex}" ${selectedOfferIndices.has(globalIndex) ? 'checked' : ''}>`;
+            return `
+                <tr>
+                    <td>${checkbox}</td>
+                    <td><span class="fw-bold">${id}</span></td>
+                    <td><span class="text-primary">${name}</span></td>
+                    <td>${imgHtml}</td>
+                    <td style="max-width:160px;">${countriesHtml}</td>
+                    <td><span class="text-success fw-bold">${payout}</span></td>
+                    <td style="max-width:180px;">
+                        ${urlHtml}
+                        <div class="mt-2">${viewDetailsBtn}</div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // Create header
+    const headerHtml = `
+        <div class="mb-4 p-4 rounded-3 shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h3 class="mb-2">🎯 Offers Found</h3>
+                    <p class="mb-0 opacity-75">Discovered ${allOffers.length} offer${allOffers.length !== 1 ? 's' : ''} with enhanced deep search.</p>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <div class="bg-white text-dark rounded-pill px-3 py-2 d-inline-block shadow-sm">
+                        <strong class="fs-4" id="filtered-count">${allOffers.length}</strong>
+                        <small class="ms-1">offers</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Filter controls
+    const filterControlsHtml = `
+        <div class="card mb-4 shadow-sm" style="border-radius: 12px;">
+            <div class="card-header bg-light">
+                <h6 class="mb-0">🔍 Filter Options</h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label for="filter-name" class="form-label small">Name</label>
+                        <input type="text" class="form-control form-control-sm" id="filter-name" placeholder="Search by name...">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filter-id" class="form-label small">ID</label>
+                        <input type="text" class="form-control form-control-sm" id="filter-id" placeholder="Search by ID...">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filter-countries" class="form-label small">Countries</label>
+                        <input type="text" class="form-control form-control-sm" id="filter-countries" placeholder="Search by country...">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filter-payout" class="form-label small">Min Payout</label>
+                        <input type="number" class="form-control form-control-sm" id="filter-payout" placeholder="Min payout value..." step="0.01">
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <button type="button" class="btn btn-primary btn-sm me-2" id="apply-filters">
+                            <i class="fas fa-filter me-1"></i>Apply Filters
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="clear-filters">
+                            <i class="fas fa-times me-1"></i>Clear Filters
+                        </button>
+                        <span class="ms-3 text-muted small">
+                            Showing <span id="showing-count">${allOffers.length}</span> of <span id="total-count">${allOffers.length}</span> offers
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Table header
+    const tableHeader = `
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>
+                <button type="button" class="btn btn-success btn-sm" id="check-url-btn">
+                    <i class="fas fa-link me-1"></i>Check URL
+                </button>
+                 <button type="button" class="btn btn-success btn-sm" id="select-all-offer-btn">
+                    <i class="fas fa-link me-1"></i>Select ALL Offers
+                </button>
+                <span class="ms-2 text-muted small">(Select rows to check their URLs)</span>
+            </div>
+        </div>
+        <div class="table-responsive">
+        <table class="table table-hover align-middle shadow-sm" style="border-radius: 12px; overflow: hidden;">
+            <thead class="table-primary">
+                <tr>
+                    <th style="min-width:30px;"><input type="checkbox" id="select-all-offers"></th>
+                    <th style="min-width:60px;">ID</th>
+                    <th style="min-width:120px;">Name</th>
+                    <th style="min-width:60px;">Image</th>
+                    <th style="min-width:100px;">Countries</th>
+                    <th style="min-width:80px;">Payout</th>
+                    <th style="min-width:120px;">URL / Details</th>
+                </tr>
+            </thead>
+            <tbody id="offers-table-body">
+            </tbody>
+        </table>
+        </div>
+    `;
+
+    // Modal for viewing offer details (single modal reused)
+    const modalHtml = `
+        <div class="modal fade" id="offerDetailsModal" tabindex="-1" aria-labelledby="offerDetailsModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="offerDetailsModalLabel">Offer Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body" id="offerDetailsModalBody">
+                <!-- Offer details will be injected here -->
+              </div>
+            </div>
+          </div>
+        </div>
+    `;
+
+    // Pagination controls
+    function renderPaginationControls(page, totalPages) {
+        return `
+            <div class="d-flex justify-content-between align-items-center my-3">
+                <button class="btn btn-outline-secondary btn-sm" id="offers-prev-btn" ${page === 1 ? 'disabled' : ''}>Previous</button>
+                <span>Page <strong id="offers-page-num">${page}</strong> of <strong id="offers-total-pages">${totalPages}</strong></span>
+                <button class="btn btn-outline-secondary btn-sm" id="offers-next-btn" ${page === totalPages ? 'disabled' : ''}>Next</button>
+            </div>
+        `;
+    }
+
+    // Compose the HTML (include modal)
+    let html = modalHtml + headerHtml + filterControlsHtml + tableHeader + renderPaginationControls(currentPage, totalPages);
+
+    // After rendering, we need to fill the table body and set up pagination and view details
+    setTimeout(function() {
+        // Initial render
+        const tbody = document.getElementById('offers-table-body');
+        if (tbody) tbody.innerHTML = renderTableRows(currentPage);
+        setTimeout(() => {
+    window.scrollBy({ top: 300, left: 0, behavior: 'smooth' });
+}, 200);  // delay allows DOM update before scroll
+        // Filter functionality
+        function applyFilters() {
+            const filters = {
+                name: document.getElementById('filter-name').value,
+                id: document.getElementById('filter-id').value,
+                countries: document.getElementById('filter-countries').value,
+                payout: document.getElementById('filter-payout').value
+            };
+            
+            filteredOffers = filterOffers(allOffers, filters);
+            currentPage = 1; // Reset to first page
+            totalPages = Math.ceil(filteredOffers.length / pageSize);
+            
+            // Update counts
+            document.getElementById('filtered-count').textContent = filteredOffers.length;
+            document.getElementById('showing-count').textContent = filteredOffers.length;
+            document.getElementById('total-count').textContent = allOffers.length;
+            
+            // Re-render table and pagination
+            updateTable(currentPage);
+        }
+
+        function clearFilters() {
+            document.getElementById('filter-name').value = '';
+            document.getElementById('filter-id').value = '';
+            document.getElementById('filter-countries').value = '';
+            document.getElementById('filter-payout').value = '';
+            
+            filteredOffers = allOffers;
+            currentPage = 1;
+            totalPages = Math.ceil(filteredOffers.length / pageSize);
+            
+            // Update counts
+            document.getElementById('filtered-count').textContent = allOffers.length;
+            document.getElementById('showing-count').textContent = allOffers.length;
+            document.getElementById('total-count').textContent = allOffers.length;
+            
+            // Re-render table and pagination
+            updateTable(currentPage);
+        }
+
+        // Pagination controls
+        const prevBtn = document.getElementById('offers-prev-btn');
+        const nextBtn = document.getElementById('offers-next-btn');
+        const pageNum = document.getElementById('offers-page-num');
+        const totalPagesSpan = document.getElementById('offers-total-pages');
+
+        // function updateTable(page) {
+        //     if (tbody) tbody.innerHTML = renderTableRows(page);
+        //     if (pageNum) pageNum.textContent = page;
+        //     if (totalPagesSpan) totalPagesSpan.textContent = totalPages;
+        //     if (prevBtn) prevBtn.disabled = page === 1;
+        //     if (nextBtn) nextBtn.disabled = page === totalPages;
+        //     setupViewDetailsHandlers(); // re-setup handlers after table rerender
+        // }
+        function updateTable(page) {
+           if (tbody) tbody.innerHTML = renderTableRows(page);
+           if (pageNum) pageNum.textContent = page;
+           if (totalPagesSpan) totalPagesSpan.textContent = totalPages;
+           if (prevBtn) prevBtn.disabled = page === 1;
+           if (nextBtn) nextBtn.disabled = page === totalPages;
+           setupViewDetailsHandlers(); // re-setup handlers after table rerender
+           setupCheckboxHandlers(); // Add this line to re-setup checkbox handlers
+           }
+
+        if (prevBtn) {
+            prevBtn.onclick = function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    updateTable(currentPage);
+                }
+            };
+        }
+        if (nextBtn) {
+            nextBtn.onclick = function() {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    updateTable(currentPage);
+                }
+            };
+        }
+
+        // Filter event listeners
+        const applyFiltersBtn = document.getElementById('apply-filters');
+        const clearFiltersBtn = document.getElementById('clear-filters');
+        
+        if (applyFiltersBtn) {
+            applyFiltersBtn.onclick = applyFilters;
+        }
+        
+        if (clearFiltersBtn) {
+            clearFiltersBtn.onclick = clearFilters;
+        }
+
+        // Setup view details button handlers
+        function setupViewDetailsHandlers() {
+            const buttons = document.querySelectorAll('.view-details-btn');
+            buttons.forEach(btn => {
+                btn.onclick = function() {
+                    const offerIndex = parseInt(btn.getAttribute('data-offer-index'));
+                    const offer = filteredOffers[offerIndex];
+                    if (!offer) return;
+                    // Render the complete offer data
+                    const modalBody = document.getElementById('offerDetailsModalBody');
+                    if (modalBody) {
+                        modalBody.innerHTML = `
+                            <div class="mb-3">
+                                <div class="text-muted small">Path: <code>${offer.path}</code></div>
+                            </div>
+                            <div>${renderDataStructure(offer.completeData)}</div>
+                        `;
+                    }
+                    // Show the modal (Bootstrap 5)
+                    let modalEl = document.getElementById('offerDetailsModal');
+                    if (window.bootstrap && modalEl) {
+                        let modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        modal.show();
+                    } else if (modalEl) {
+                        // fallback: show as block if Bootstrap not loaded
+                        modalEl.style.display = 'block';
+                        modalEl.classList.add('show');
+                        modalEl.setAttribute('aria-modal', 'true');
+                        modalEl.removeAttribute('aria-hidden');
+                        // Add close on click for btn-close
+                        const closeBtn = modalEl.querySelector('.btn-close');
+                        if (closeBtn) {
+                            closeBtn.onclick = function() {
+                                modalEl.style.display = 'none';
+                                modalEl.classList.remove('show');
+                                modalEl.setAttribute('aria-hidden', 'true');
+                                modalEl.removeAttribute('aria-modal');
+                            };
+                        }
+                    }
+                };
+            });
+        }
+        setupViewDetailsHandlers();
+        // Add checkbox change event listeners to preserve selections
+        function setupCheckboxHandlers() {
+          const checkboxes = document.querySelectorAll('.offer-row-checkbox');
+          checkboxes.forEach(cb => {
+          cb.addEventListener('change', function() {
+            const offerIndex = parseInt(this.getAttribute('data-offer-index'));
+            if (this.checked) {
+                selectedOfferIndices.add(offerIndex);
+            } else {
+                selectedOfferIndices.delete(offerIndex);
+            }
+         });
+       });
+      }
+setupCheckboxHandlers();
+        // Add select all functionality
+        // const selectAll = document.getElementById('select-all-offers');
+        // if (selectAll) {
+        //     selectAll.onclick = function() {
+        //         const checkboxes = document.querySelectorAll('.offer-row-checkbox');
+        //         checkboxes.forEach(cb => { cb.checked = selectAll.checked; });
+        //     };
+        // }
+        // Replace the existing select-all logic with this:
+     const selectAllOfferBtn = document.getElementById('select-all-offer-btn');
+        let allSelected = false;
+if (selectAllOfferBtn) {
+    selectAllOfferBtn.onclick = function() {
+    //     const checkboxes = document.querySelectorAll('.offer-row-checkbox');
+    //     checkboxes.forEach(cb => { 
+    //         cb.checked = selectAll.checked;
+    //         const offerIndex = parseInt(cb.getAttribute('data-offer-index'));
+    //         if (selectAll.checked) {
+    //             selectedOfferIndices.add(offerIndex);
+    //         } else {
+    //             selectedOfferIndices.delete(offerIndex);
+    //         }
+    //     });
+    // };
+    allSelected = !allSelected;
+      if ( allSelected ) {
+        
+            // Select all offers across all pages
+            selectedOfferIndices = new Set(Array.from({length: allOffers.length}, (_, i) => i));
+            selectAllOfferBtn.textContent = "Deselect ALL Offers";
+        } else {
+            // Deselect all
+            selectedOfferIndices.clear();
+            selectAllOfferBtn.textContent = "Select ALL Offers";
+        }
+        // Update checkboxes on the current page to reflect the new state
+        const checkboxes = document.querySelectorAll('.offer-row-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = allSelected;
+        });
+    };
+}  
+const selectAll = document.getElementById('select-all-offers');
+if (selectAll) {
+    selectAll.onclick = function() {
+        const checkboxes = document.querySelectorAll('.offer-row-checkbox');
+        checkboxes.forEach(cb => { 
+            cb.checked = selectAll.checked;
+            const offerIndex = parseInt(cb.getAttribute('data-offer-index'));
+            if (selectAll.checked) {
+                selectedOfferIndices.add(offerIndex);
+            } else {
+                selectedOfferIndices.delete(offerIndex);
+            }
+        });
+    };
+}
+        // Check URL button logic
+        const checkUrlBtn = document.getElementById('check-url-btn');
+        if (checkUrlBtn) {
+            checkUrlBtn.onclick = function() {
+                // const checkboxes = document.querySelectorAll('.offer-row-checkbox:checked');
+                // Get all selected offers from the Set, not just currently visible checkboxes
+                const selectedIndices = Array.from(selectedOfferIndices);
+                const url_country_pairs = [];
+                
+                // checkboxes.forEach(cb => {
+                //     const idx = parseInt(cb.getAttribute('data-offer-index'));
+                //     const offer = filteredOffers[idx];
+                //     if (!offer) return;
+                    
+                //     const url = getUrl(offer.offerData, offer.completeData);
+                //     const countries = getCountries(offer.completeData);
+                    
+                //     if (url && countries && countries.length > 0) {
+                //         // Include offer details in the request
+                //         url_country_pairs.push({
+                //             url: url,
+                //             countries: countries,
+                //             offer_data: {
+                //                 id: getId(offer.offerData, offer.completeData),
+                //                 name: getName(offer.offerData, offer.completeData),
+                //                 image: getImage(offer.offerData, offer.completeData),
+                //                 countries: countries,
+                //                 payout: getPayout(offer.completeData)
+                //             }
+                //         });
+                //     }
+                // });
+                selectedIndices.forEach(idx => {
+    const offer = filteredOffers[idx]; // Use allOffers instead of filteredOffers
+    if (!offer) return;
+    
+    //   const url = getUrl(offer.offerData, offer.completeData);
+    const id=getId(offer.offerData, offer.completeData);
+    let trackingUrlInput = document.getElementById('traking_url')?.value.trim() || "";
+    const url = updateOfferId(trackingUrlInput,id);
+    const countries = getCountries(offer.completeData);
+    
+    if (url && countries && countries.length > 0) {
+        url_country_pairs.push({
+            url: url,
+            countries: countries,
+            offer_data: {
+                id: id,
+                name: getName(offer.offerData, offer.completeData),
+                image: getImage(offer.offerData, offer.completeData),
+                countries: countries,
+                payout: getPayout(offer.completeData)
+            }
+        });
+    }
+});
+                if (url_country_pairs.length === 0) {
+                    alert('Please select at least one row with valid URL and countries.');
+                    return;
+                }
+                
+                // Show loading indicator
+                adminTableResult.innerHTML = `
+                    <div class="d-flex justify-content-center align-items-center" style="min-height: 300px;">
+                        <div class="text-center">
+                            <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <h5 class="text-muted">Testing URLs with Proxies...</h5>
+                            <p class="text-muted small">This may take a few moments depending on the number of URLs and countries.</p>
+                            <div class="progress mt-3" style="width: 300px; margin: 0 auto;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                fetch('/api_tester_selectred-row', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url_country_pairs })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    // Show results in the main table area
+                    adminTableResult.innerHTML = renderProxyTestResultsTable(data.results);
+                    // Add back button handler
+                    const backBtn = document.getElementById('back-to-offers-table');
+                    if (backBtn) {
+                        backBtn.onclick = function() {
+                            adminTableResult.innerHTML = renderTable(window.latestApiData);
+                        };
+                    }
+                })
+                .catch(err => {
+                    // Show error message if request fails
+                    adminTableResult.innerHTML = `
+                        <div class="alert alert-danger border-0 shadow-sm" style="border-radius: 12px;">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="bg-danger rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                    <span class="text-white">❌</span>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">Error Testing URLs</h6>
+                                    <small class="text-muted">Failed to test the selected URLs with proxies</small>
+                                </div>
+                            </div>
+                            <p class="mb-3">Error: ${err.message}</p>
+                            <button class="btn btn-outline-primary btn-sm" onclick="adminTableResult.innerHTML = renderTable(window.latestApiData)">
+                                Back to Offers Table
+                            </button>
+                        </div>
+                    `;
+                });
+            };
+        }
+    }, 0);
+
+    return html;
+}
+
+// Tab switching for admin API tester
+const adminPrettyTab = document.getElementById('admin-pretty-tab');
+const adminRawTab = document.getElementById('admin-raw-tab');
+const adminTableTab = document.getElementById('admin-table-tab');
+const adminPrettyResult = document.getElementById('adminPrettyResult');
+const adminApiResult = document.getElementById('apiResponseOutput');
+const adminTableResult = document.getElementById('adminTableResult');
+
+adminPrettyTab.addEventListener('click', function() {
+    adminPrettyTab.classList.add('active');
+    adminRawTab.classList.remove('active');
+    adminTableTab.classList.remove('active');
+    adminPrettyResult.style.display = 'block';
+    adminApiResult.style.display = 'none';
+    adminTableResult.style.display = 'none';
+});
+adminRawTab.addEventListener('click', function() {
+    adminRawTab.classList.add('active');
+    adminPrettyTab.classList.remove('active');
+    adminTableTab.classList.remove('active');
+    adminPrettyResult.style.display = 'none';
+    adminApiResult.style.display = 'block';
+    adminTableResult.style.display = 'none';
+});
+adminTableTab.addEventListener('click', function() {
+    adminTableTab.classList.add('active');
+    adminPrettyTab.classList.remove('active');
+    adminRawTab.classList.remove('active');
+    adminPrettyResult.style.display = 'none';
+    adminApiResult.style.display = 'none';
+    adminTableResult.style.display = 'block';
+    // Render table only now
+    if (window.latestApiData) {
+        adminTableResult.innerHTML = renderTable(window.latestApiData);
+    }
+});
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.hljs) hljs.highlightAll();
+});
+document.getElementById('adminApiTestForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const method = document.getElementById('apiMethod').value;
+    let url = document.getElementById('apiUrl').value.trim();
+    adminPrettyResult.innerHTML = '<em>Loading...</em>';
+    adminApiResult.textContent = 'Loading...';
+    adminTableResult.innerHTML = '<em>Loading...</em>';
+    // Collect query params
+    const params = {};
+    Array.from(document.querySelectorAll('.param-key')).forEach((el, i) => {
+        const key = el.value;
+        const value = document.querySelectorAll('.param-value')[i].value;
+        if (key) params[key] = value;
+    });
+    // Collect headers
+    const headers = {};
+    Array.from(document.querySelectorAll('.header-key')).forEach((el, i) => {
+        const key = el.value;
+        const value = document.querySelectorAll('.header-value')[i].value;
+        if (key) headers[key] = value;
+    });
+    // Collect body
+    let body = undefined;
+    if (['POST','PUT','PATCH'].includes(method)) {
+        const bodyText = document.getElementById('apiBody').value.trim();
+        if (bodyText) {
+            try {
+                body = JSON.stringify(JSON.parse(bodyText));
+            } catch (e) {
+                outputElement.textContent = 'Invalid JSON in request body.';
+                return;
+            }
+        }
+    }
+    fetch('/admin/proxy-api', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            url: url,
+            method: method,
+            headers: headers,
+            params: params,
+            body: body
+        })
+    })
+    .then(response => {
+        const status = response.status;
+        const statusText = response.statusText;
+        return response.text().then(text => {
+            let data;
+            try { data = JSON.parse(text); } catch { data = text; }
+            return { status, statusText, data };
+        });
+    })
+    .then(result => {
+        window.latestApiData = result.data;
+        adminPrettyResult.innerHTML = `<div class='mb-2'><strong>Status:</strong> ${result.status} ${result.statusText}</div>` + renderPretty(result.data);
+        if (window.hljs) hljs.highlightAll();
+        adminApiResult.textContent = `Status: ${result.status} ${result.statusText}\n\n`;
+        adminApiResult.textContent += typeof result.data === 'string' ? result.data : JSON.stringify(result.data, null, 2);
+        // trackingUrlInput = document.getElementById('traking_url');
+        adminTableResult.innerHTML = renderTable(result.data);
+    })
+    .catch(error => {
+        adminPrettyResult.innerHTML = `<div class='alert alert-danger'>Error: ${error.message}</div>`;
+        adminApiResult.textContent = `Error: ${error.message}\n\nPlease check the URL and ensure the API server is running.`;
+        adminTableResult.innerHTML = `<div class='alert alert-danger'>Error: ${error.message}</div>`;
+    });
+});
+
+window.latestApiData = null;
+// let lastProxyTestResults = [];
+function renderProxyTestResultsTable(results) {
+  //  lastProxyTestResults = results;
+    // Use a fast-loading SVG default image (very small, inline, no text)
+    const defaultImage = 'https://offery.io/files/offers/offer-9mzcxpqvm.png';
+    
+    let html = `
+        <div class="mb-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Proxy Test Results</h5>
+            <button class="btn btn-outline-primary btn-sm" id="back-to-offers-table">Back to Offers Table</button>
+        </div>
+        <button class="btn btn-primary btn-sm" id="add-selected-offers">Add Selected</button>
+        <div class="table-responsive">
+        <table class="table table-hover align-middle shadow-sm" style="border-radius: 12px; overflow: hidden;">
+            <thead class="table-primary">
+                <tr>
+                    <th><input type="checkbox" id="select-all-offers"></th>
+                    <th style="min-width:30px;">#</th>
+                    <th style="min-width:60px;">ID</th>
+                    <th style="min-width:120px;">Name</th>
+                    <th style="min-width:60px;">Image</th>
+                    <th style="min-width:100px;">Countries</th>
+                    <th style="min-width:80px;">Payout</th>
+                    <th style="min-width:120px;">URL / Details</th>
+                    <th style="min-width:100px;">Status</th>
+                    <th style="min-width:100px;">IP Country</th>
+                    <th style="min-width:80px;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${results.map((r, index) => {
+                    // Get offer details if available, otherwise use defaults
+                    const id = r.id || 'N/A';
+                    const name = r.name || 'N/A';
+                    const image = r.image || defaultImage;
+                    const countries = r.countries || [];
+                    const payout = r.payout || 'N/A';
+                    const description = r.description || 'N/A';
+                    const url = r.url || '';
+                    const status = r.status || 'N/A';
+                    const ip_country = r.ip_country || 'N/A';
+                    
+                    // Countries as badges, handle empty
+                    let countriesHtml = '';
+                    if (countries.length) {
+                        countriesHtml = countries.map(c => `<span class="badge bg-info text-dark me-1 mb-1">${c}</span>`).join('');
+                    } else {
+                        countriesHtml = `<span class="text-muted">N/A</span>`;
+                    }
+                    
+                    // URL as link or muted, only show the url string
+                    let urlHtml = '';
+                    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+                        urlHtml = `<a href="${url}" target="_blank" class="text-primary text-decoration-none text-truncate" style="max-width:120px;display:inline-block;">${url}</a>`;
+                    } else if (url) {
+                        urlHtml = `<span class="text-success text-truncate" style="max-width:120px;display:inline-block;">${url}</span>`;
+                    } else {
+                        urlHtml = `<span class="text-muted">N/A</span>`;
+                    }
+                    
+                    // Image as small thumbnail
+                    let imgHtml = `<img src="${image}" alt="${name}" style="width:48px;height:32px;object-fit:cover;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,0.07);" onerror="this.src='${defaultImage}'">`;
+                    
+                    // Status with color coding
+                    let statusHtml = '';
+                    if (status.includes('✅')) {
+                        statusHtml = `<span class="badge bg-success">${status}</span>`;
+                    } else if (status.includes('⚠️')) {
+                        statusHtml = `<span class="badge bg-warning text-dark">${status}</span>`;
+                    } else if (status.includes('❌')) {
+                        statusHtml = `<span class="badge bg-danger">${status}</span>`;
+                    } else {
+                        statusHtml = `<span class="text-muted">${status}</span>`;
+                    }
+                    
+                    // IP Country with badge
+                    let ipCountryHtml = '';
+                    if (ip_country && ip_country !== 'N/A' && ip_country !== 'Unknown' && ip_country !== 'Check Failed') {
+                        ipCountryHtml = `<span class="badge bg-secondary">${ip_country}</span>`;
+                    } else {
+                        ipCountryHtml = `<span class="text-muted">${ip_country}</span>`;
+                    }
+                    
+                    return `
+                        <tr>
+                            <td>
+    <input type="checkbox" class="form-check-input offer-checkbox" 
+        data-id="${id}" 
+        data-name="${name}" 
+        data-image="${image}" 
+        data-url="${url}"
+        data-payout="${payout}"
+        data-countries="${countries}"
+        data-description="${description}"
+        >
+</td>
+
+                            <td><span class="text-muted">${index + 1}</span></td>
+                            <td><span class="fw-bold">${id}</span></td>
+                            <td><span class="text-primary">${name}</span></td>
+                            <td>${imgHtml}</td>
+                            <td style="max-width:160px;">${countriesHtml}</td>
+                            <td><span class="text-success fw-bold">${payout}</span></td>
+                            <td style="max-width:180px;">${urlHtml}</td>
+                            <td>${statusHtml}</td>
+                            <td>${ipCountryHtml}</td>
+                       <td>
+    <button 
+        class="btn btn-sm btn-outline-success add-offer-btn"
+        data-id="${id}" 
+        data-name="${name}" 
+        data-image="${image}" 
+        data-url="${url}"
+        data-payout="${payout}"
+        data-countries="${countries}"
+        data-description="${description}"
+        >
+        Add
+    </button>
+</td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+        </div>
+    `;
+    return html;
+    
+}
+document.addEventListener('click', function(e) {
+   // Handle single add
+//    if (e.target && e.target.classList.contains('add-offer-btn')) {
+//         const btn = e.target;
+//         const offerData = {
+//             offer_id: btn.getAttribute('data-id'),
+//             offer_name: btn.getAttribute('data-name'),
+//             image_url: btn.getAttribute('data-image'),
+//             target_url: btn.getAttribute('data-url'),
+//         };
+
+//         fetch('/add_offer_to_table', {
+//             method: 'POST',
+//             headers: { 'Content-Type': 'application/json' },
+//             body: JSON.stringify(offerData)
+//         })
+//         .then(response => response.json())
+//         .then(data => {
+//             if (data.success) {
+//                 btn.innerText = 'Added';
+//                 btn.classList.remove('btn-outline-success');
+//                 btn.classList.add('btn-success');
+//                 btn.disabled = true;
+//             } else {
+//                 alert('❌ Failed to add: ' + (data.error || 'Unknown error'));
+//             }
+//         })
+//         .catch(err => {
+//             console.error(err);
+//             alert('❌ Network error while adding offer.');
+//         });
+//     }
+if (e.target && e.target.classList.contains('add-offer-btn')) {
+    const btn = e.target;
+    const originalText = btn.innerText;
+    const originalClasses = btn.className;
+    
+    // Show loading animation
+    btn.innerHTML = `
+        <span class="d-flex align-items-center justify-content-center">
+            <span class="spinner-border spinner-border-sm me-2" role="status" style="width: 16px; height: 16px;">
+                <span class="visually-hidden">Loading...</span>
+            </span>
+            Adding...
+        </span>
+    `;
+    btn.disabled = true;
+    
+    const offerData = {
+        offer_id: btn.getAttribute('data-id'),
+        offer_name: btn.getAttribute('data-name'),
+        image_url: btn.getAttribute('data-image'),
+        target_url: btn.getAttribute('data-url'),
+        payout: btn.getAttribute('data-payout'),
+        countries: btn.getAttribute('data-countries'),
+        description: btn.getAttribute('data-description')
+    };
+
+    fetch('/add_offer_to_table', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(offerData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Play success sound
+            playSuccessSound();
+            
+            // Step 1: Remove loading and show only checkmark first
+            btn.classList.remove('btn-outline-success');
+            btn.classList.add('btn-success');
+            
+            // Show only the checkmark with animation
+            btn.innerHTML = `
+                <span class="d-flex align-items-center justify-content-center">
+                    <i class="fas fa-check" style="
+                        animation: checkAppear 0.6s ease-out;
+                        transform: scale(0);
+                        animation-fill-mode: forwards;
+                    "></i>
+                </span>
+            `;
+            
+            // Step 2: After checkmark animation completes, show "Added" text
+            setTimeout(() => {
+                btn.innerHTML = `
+                    <span class="d-flex align-items-center justify-content-center">
+                        <i class="fas fa-check me-2"></i>
+                        <span style="animation: textSlideIn 0.4s ease-out;">Added</span>
+                    </span>
+                `;
+            }, 600); // Wait for checkmark animation to complete
+            
+            btn.disabled = true;
+            
+        } else {
+            // Play error sound
+            playErrorSound();
+            
+            // Error animation - X icon first, then "Failed" text
+            btn.classList.remove('btn-outline-success');
+            btn.classList.add('btn-danger');
+            
+            // Show only X icon first
+            btn.innerHTML = `
+                <span class="d-flex align-items-center justify-content-center">
+                    <i class="fas fa-times" style="
+                        animation: errorAppear 0.5s ease-out;
+                        transform: scale(0);
+                        animation-fill-mode: forwards;
+                    "></i>
+                </span>
+            `;
+            
+            // Then show "Failed" text
+            setTimeout(() => {
+                btn.innerHTML = `
+                    <span class="d-flex align-items-center justify-content-center">
+                        <i class="fas fa-times me-2"></i>
+                        <span style="animation: textSlideIn 0.4s ease-out;">Failed</span>
+                    </span>
+                `;
+            }, 500);
+            
+            // Reset button after 2 seconds
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.className = originalClasses;
+                btn.disabled = false;
+            }, 2500);
+            
+            alert('❌ Failed to add: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        
+        // Play network error sound
+        playNetworkErrorSound();
+        
+        // Network error - warning icon first, then text
+        btn.classList.remove('btn-outline-success');
+        btn.classList.add('btn-warning');
+        
+        // Show only warning icon first
+        btn.innerHTML = `
+            <span class="d-flex align-items-center justify-content-center">
+                <i class="fas fa-exclamation-triangle" style="
+                    animation: warningAppear 0.5s ease-out;
+                    transform: scale(0);
+                    animation-fill-mode: forwards;
+                "></i>
+            </span>
+        `;
+        
+        // Then show "Error" text
+        setTimeout(() => {
+            btn.innerHTML = `
+                <span class="d-flex align-items-center justify-content-center">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <span style="animation: textSlideIn 0.4s ease-out;">Error</span>
+                </span>
+            `;
+        }, 500);
+        
+        // Reset button after 3 seconds
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.className = originalClasses;
+            btn.disabled = false;
+        }, 3500);
+        
+        alert('❌ Network error while adding offer.');
+    });
+}
+
+// Sound effect functions
+function playSuccessSound() {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Pleasant success chord (C-E-G)
+        const frequencies = [523, 659, 784];
+        
+        frequencies.forEach((freq, index) => {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.15, audioContext.currentTime + 0.1);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.6);
+            
+            oscillator.start(audioContext.currentTime + index * 0.1);
+            oscillator.stop(audioContext.currentTime + 0.6);
+        });
+    } catch (error) {
+        console.log('Success audio not supported');
+    }
+}
+
+function playErrorSound() {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Error sound - descending notes
+        const frequencies = [400, 300, 200];
+        
+        frequencies.forEach((freq, index) => {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+            oscillator.type = 'sawtooth';
+            
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.05);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            oscillator.start(audioContext.currentTime + index * 0.1);
+            oscillator.stop(audioContext.currentTime + 0.3);
+        });
+    } catch (error) {
+        console.log('Error audio not supported');
+    }
+}
+
+function playNetworkErrorSound() {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Network error - warning beep pattern
+        const frequency = 800;
+        
+        for (let i = 0; i < 2; i++) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+            oscillator.type = 'square';
+            
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.08, audioContext.currentTime + 0.05);
+            gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.15);
+            
+            oscillator.start(audioContext.currentTime + i * 0.2);
+            oscillator.stop(audioContext.currentTime + 0.15 + i * 0.2);
+        }
+    } catch (error) {
+        console.log('Network error audio not supported');
+    }
+}
+
+// Add CSS animations if not already present
+if (!document.querySelector('#button-animations-style')) {
+    const style = document.createElement('style');
+    style.id = 'button-animations-style';
+    style.textContent = `
+        @keyframes checkAppear {
+            0% {
+                transform: scale(0) rotate(-180deg);
+                opacity: 0;
+            }
+            70% {
+                transform: scale(1.2) rotate(-10deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes errorAppear {
+            0% {
+                transform: scale(0) rotate(-90deg);
+                opacity: 0;
+            }
+            70% {
+                transform: scale(1.2) rotate(10deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes warningAppear {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.3);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes textSlideIn {
+            0% {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .spinner-border {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .add-offer-btn {
+            transition: all 0.3s ease;
+            min-width: 80px; /* Prevent button size jumping */
+        }
+    `;
+    document.head.appendChild(style);
+}
+    // Handle add selected
+    if (e.target && e.target.id === 'add-selected-offers') {
+        const checkboxes = document.querySelectorAll('.offer-checkbox:checked');
+        const selectedOffers = [];
+
+        checkboxes.forEach(cb => {
+            selectedOffers.push({
+                id: cb.getAttribute('data-id'),
+                name: cb.getAttribute('data-name'),
+                image: cb.getAttribute('data-image'),
+                url: cb.getAttribute('data-url'),
+                payout: cb.getAttribute('data-payout'),
+                countries: cb.getAttribute('data-countries'),
+                description: cb.getAttribute('data-description')
+            });
+        });
+
+        if (selectedOffers.length === 0) {
+            alert('No offers selected.');
+            return;
+        }
+        adminTableResult.innerHTML = `
+                    <div class="d-flex justify-content-center align-items-center" style="min-height: 300px;">
+                        <div class="text-center">
+                            <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <h5 class="text-muted">Adding the selected Offers...</h5>
+                            <p class="text-muted small">This may take a few moments depending on the number of offers.</p>
+                            <div class="progress mt-3" style="width: 300px; margin: 0 auto;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+        fetch('/add_selected_offers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ selectedOffers })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+    // Play success sound (similar to Google Pay)
+    const playSuccessSound = () => {
+        // Create audio context for success sound
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Success sound frequencies (pleasant chord)
+        const frequencies = [523, 659, 784]; // C5, E5, G5
+        
+        frequencies.forEach((freq, index) => {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.1);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.8);
+            
+            oscillator.start(audioContext.currentTime + index * 0.1);
+            oscillator.stop(audioContext.currentTime + 0.8);
+        });
+    };
+
+    // Show Google Pay style success animation with drawing tick
+    adminTableResult.innerHTML = `
+        <div class="d-flex justify-content-center align-items-center" style="min-height: 300px;">
+            <div class="text-center">
+                <div class="success-animation mb-3" style="width: 5rem; height: 5rem; display: flex; align-items: center; justify-content: center; margin: 0 auto; position: relative;">
+                    <div class="success-circle" style="
+                        width: 80px; 
+                        height: 80px; 
+                        border-radius: 50%; 
+                        background: linear-gradient(45deg, #34a853, #4caf50);
+                        display: flex; 
+                        align-items: center; 
+                        justify-content: center;
+                        box-shadow: 0 4px 20px rgba(52, 168, 83, 0.3);
+                        animation: successPulse 0.6s ease-out, successGlow 2s ease-in-out infinite 0.6s;
+                        position: relative;
+                        overflow: hidden;
+                    ">
+                        <!-- Animated Checkmark SVG -->
+                        <svg width="40" height="40" viewBox="0 0 24 24" style="position: absolute;">
+                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" 
+                                  fill="white" 
+                                  stroke="white" 
+                                  stroke-width="2" 
+                                  stroke-linecap="round" 
+                                  stroke-linejoin="round"
+                                  style="
+                                    stroke-dasharray: 20;
+                                    stroke-dashoffset: 20;
+                                    animation: drawTick 1s ease-out 0.3s forwards;
+                                  "/>
+                        </svg>
+                    </div>
+                    
+                    <!-- Celebration particles -->
+                    <div class="particle" style="position: absolute; width: 4px; height: 4px; background: #4caf50; border-radius: 50%; animation: particle1 1.5s ease-out 0.8s;"></div>
+                    <div class="particle" style="position: absolute; width: 3px; height: 3px; background: #66bb6a; border-radius: 50%; animation: particle2 1.5s ease-out 0.9s;"></div>
+                    <div class="particle" style="position: absolute; width: 4px; height: 4px; background: #81c784; border-radius: 50%; animation: particle3 1.5s ease-out 1s;"></div>
+                    <div class="particle" style="position: absolute; width: 3px; height: 3px; background: #a5d6a7; border-radius: 50%; animation: particle4 1.5s ease-out 1.1s;"></div>
+                </div>
+                
+                <h5 class="text-success fw-bold" style="animation: fadeInUp 0.6s ease-out 1s both;">
+                    🎉 All Selected Offers Added Successfully!
+                </h5>
+                <p class="text-muted small" style="animation: fadeInUp 0.6s ease-out 1.2s both;">
+                    Your offers have been processed and are now active in the system.
+                </p>
+                <div class="success-badge mt-3" style="animation: fadeInUp 0.6s ease-out 1.4s both;">
+                    <span class="badge bg-success-subtle text-success border border-success px-3 py-2">
+                        <i class="fas fa-check-circle me-1"></i>
+                        Process completed successfully
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        <style>
+            @keyframes successPulse {
+                0% {
+                    transform: scale(0);
+                    opacity: 0;
+                }
+                50% {
+                    transform: scale(1.15);
+                }
+                100% {
+                    transform: scale(1);
+                    opacity: 1;
+                }
+            }
+            
+            @keyframes successGlow {
+                0%, 100% {
+                    box-shadow: 0 4px 20px rgba(52, 168, 83, 0.3);
+                }
+                50% {
+                    box-shadow: 0 8px 30px rgba(52, 168, 83, 0.6);
+                }
+            }
+            
+            @keyframes drawTick {
+                0% {
+                    stroke-dashoffset: 20;
+                    opacity: 0;
+                }
+                20% {
+                    opacity: 1;
+                }
+                100% {
+                    stroke-dashoffset: 0;
+                    opacity: 1;
+                }
+            }
+            
+            @keyframes fadeInUp {
+                0% {
+                    opacity: 0;
+                    transform: translateY(30px);
+                }
+                100% {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            
+            @keyframes particle1 {
+                0% { transform: translate(0, 0) scale(0); opacity: 1; }
+                100% { transform: translate(-30px, -30px) scale(1); opacity: 0; }
+            }
+            
+            @keyframes particle2 {
+                0% { transform: translate(0, 0) scale(0); opacity: 1; }
+                100% { transform: translate(35px, -25px) scale(1); opacity: 0; }
+            }
+            
+            @keyframes particle3 {
+                0% { transform: translate(0, 0) scale(0); opacity: 1; }
+                100% { transform: translate(-25px, 30px) scale(1); opacity: 0; }
+            }
+            
+            @keyframes particle4 {
+                0% { transform: translate(0, 0) scale(0); opacity: 1; }
+                100% { transform: translate(30px, 25px) scale(1); opacity: 0; }
+            }
+        </style>
+    `;
+    setTimeout(() => {
+    window.scrollBy({ top: 300, left: 0, behavior: 'smooth' });
+}, 200);  // delay allows DOM update before scroll
+    // Play success sound
+    try {
+        playSuccessSound();
+    } catch (error) {
+        console.log('Audio not supported');
+    }
+
+    // Wait for 4 seconds then show the results table
+    setTimeout(() => {
+        // Add fade out animation before showing results
+        adminTableResult.style.transition = 'opacity 0.4s ease-out';
+        adminTableResult.style.opacity = '0';
+        
+        setTimeout(() => {
+            adminTableResult.innerHTML = renderTable(window.latestApiData);
+            adminTableResult.style.opacity = '1';
+        }, 400);
+    }, 2500); // 4 seconds delay
+
+  
+} else {
+                alert('❌ Error: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('❌ Network error while adding offers.');
+        });
+    }
+
+    // Handle select all
+    if (e.target && e.target.id === 'select-all-offers') {
+        const allCheckboxes = document.querySelectorAll('.offer-checkbox');
+        allCheckboxes.forEach(cb => cb.checked = e.target.checked);
+    }
+});
+</script>
+
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+  const selectAll = document.getElementById('selectAllOffers');
+  const checkboxes = document.querySelectorAll('.offer-checkbox');
+  const applyBtn = document.getElementById('applyBulkBtn');
+  const urlInput = document.getElementById('bulkUrl');
+  const fromInput = document.getElementById('bulkFrom');
+  const toInput = document.getElementById('bulkTo');
+
+  function updateApplyBtnState() {
+    const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+    const allInputsFilled = urlInput.value && fromInput.value && toInput.value;
+    applyBtn.disabled = !(anyChecked && allInputsFilled);
+  }
+
+  // Select All logic
+  selectAll.addEventListener('change', function() {
+    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    updateApplyBtnState();
+  });
+
+  // Individual checkbox logic
+  checkboxes.forEach(cb => {
+    cb.addEventListener('change', function() {
+      // If any unchecked, uncheck selectAll; if all checked, check selectAll
+      selectAll.checked = Array.from(checkboxes).every(cb => cb.checked);
+      updateApplyBtnState();
+    });
+  });
+
+  // Input fields logic
+  [urlInput, fromInput, toInput].forEach(input => {
+    input.addEventListener('input', updateApplyBtnState);
+  });
+
+  // Initial state
+  updateApplyBtnState();
+});
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+  // ... (your select all logic here)
+
+  const applyBtn = document.getElementById('applyBulkBtn');
+  applyBtn.addEventListener('click', function() {
+    const offerIds = Array.from(document.querySelectorAll('.offer-checkbox:checked')).map(cb => cb.value);
+    const redirectUrl = document.getElementById('bulkUrl').value;
+    const activeFrom = document.getElementById('bulkFrom').value;
+    const activeTo = document.getElementById('bulkTo').value;
+
+    if (!offerIds.length) {
+      alert('Please select at least one offer.');
+      return;
+    }
+    if (!redirectUrl || !activeFrom || !activeTo) {
+      alert('Please fill all fields.');
+      return;
+    }
+
+    fetch('/admin/schedule_offer_redirects', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        offer_ids: offerIds,
+        redirect_url: redirectUrl,
+        active_from: activeFrom,
+        active_to: activeTo
+      })
+    }).then(resp => resp.json()).then(data => {
+      if (data.success) {
+        alert('Redirect scheduled!');
+        location.reload();
+      } else {
+        alert('Error scheduling redirect.');
+      }
+    });
+  });
+});
+</script>
+<script>
+// Expand/collapse logic for All Offers table rows
+(function() {
+  const table = document.getElementById('allOffersTable');
+  if (!table) return;
+  
+  // Handle expand button clicks
+  table.addEventListener('click', function(e) {
+    if (e.target.closest('.expand-scheduling-btn')) {
+      const btn = e.target.closest('.expand-scheduling-btn');
+      const offerId = btn.getAttribute('data-offer-id');
+      const expandable = document.getElementById('expandable-' + offerId);
+      if (!expandable) return;
+      
+      // Hide all other expandable rows
+      document.querySelectorAll('.expandable-row').forEach(row => {
+        if (row !== expandable) row.style.display = 'none';
+      });
+      
+      // Toggle this one
+      const isHidden = window.getComputedStyle(expandable).display === 'none';
+      expandable.style.display = isHidden ? '' : 'none';
+      
+      // Load existing scheduling data when expanding
+      if (isHidden) {
+        loadExistingSchedulingData(offerId);
+      }
+    }
+  });
+  
+  // Function to load existing scheduling data
+  function loadExistingSchedulingData(offerId) {
+    fetch(`/admin/get_url_scheduling/${offerId}`)
+      .then(response => response.json())
+      .then(data => {
+        const expandable = document.getElementById('expandable-' + offerId);
+        const form = expandable.querySelector('.multi-entry-form');
+        const entryList = form.querySelector('.entry-list');
+        
+        // Clear existing entries
+        entryList.innerHTML = '';
+        
+        // Update the scheduling count in the button
+        const expandBtn = document.querySelector(`[data-offer-id="${offerId}"].expand-scheduling-btn`);
+        const countSpan = expandBtn ? expandBtn.querySelector('.scheduling-count') : null;
+        const schedulingCount = data.success ? data.scheduling_data.length : 0;
+        
+        if (countSpan) {
+          countSpan.textContent = schedulingCount;
+          // Update button appearance based on count
+          if (schedulingCount > 0) {
+            expandBtn.classList.remove('btn-outline-info');
+            expandBtn.classList.add('btn-info');
+          } else {
+            expandBtn.classList.remove('btn-info');
+            expandBtn.classList.add('btn-outline-info');
+          }
+        }
+        
+        if (data.success && data.scheduling_data.length > 0) {
+          // Add entries for each scheduling data
+          data.scheduling_data.forEach((schedule, index) => {
+            const entryHtml = `
+              <div class="entry-set row g-2 mb-2">
+                <div class="col-md-2"><input type="url" class="form-control" name="url" placeholder="URL" value="${schedule.url || ''}"></div>
+                <div class="col-md-2"><input type="time" class="form-control" name="start_time" placeholder="Start Time" value="${schedule.start_time || ''}"></div>
+                <div class="col-md-2"><input type="time" class="form-control" name="end_time" placeholder="End Time" value="${schedule.end_time || ''}"></div>
+                <div class="col-md-2"><input type="date" class="form-control" name="start_date" placeholder="Start Date" value="${schedule.start_date || ''}"></div>
+                <div class="col-md-2"><input type="date" class="form-control" name="end_date" placeholder="End Date" value="${schedule.end_date || ''}"></div>
+                <div class="col-md-2 d-flex align-items-center"><button type="button" class="btn btn-danger btn-sm remove-entry">Remove</button></div>
+              </div>
+            `;
+            entryList.insertAdjacentHTML('beforeend', entryHtml);
+          });
+        } else {
+          // If no existing data, add one empty entry
+          const entryHtml = `
+            <div class="entry-set row g-2 mb-2">
+              <div class="col-md-2"><input type="url" class="form-control" name="url" placeholder="URL"></div>
+              <div class="col-md-2"><input type="time" class="form-control" name="start_time" placeholder="Start Time"></div>
+              <div class="col-md-2"><input type="time" class="form-control" name="end_time" placeholder="End Time"></div>
+              <div class="col-md-2"><input type="date" class="form-control" name="start_date" placeholder="Start Date"></div>
+              <div class="col-md-2"><input type="date" class="form-control" name="end_date" placeholder="End Date"></div>
+              <div class="col-md-2 d-flex align-items-center"><button type="button" class="btn btn-danger btn-sm remove-entry">Remove</button></div>
+            </div>
+          `;
+          entryList.insertAdjacentHTML('beforeend', entryHtml);
+        }
+      })
+      .catch(error => {
+        console.error('Error loading scheduling data:', error);
+        // On error, add one empty entry
+        const expandable = document.getElementById('expandable-' + offerId);
+        const form = expandable.querySelector('.multi-entry-form');
+        const entryList = form.querySelector('.entry-list');
+        entryList.innerHTML = `
+          <div class="entry-set row g-2 mb-2">
+            <div class="col-md-2"><input type="url" class="form-control" name="url" placeholder="URL"></div>
+            <div class="col-md-2"><input type="time" class="form-control" name="start_time" placeholder="Start Time"></div>
+            <div class="col-md-2"><input type="time" class="form-control" name="end_time" placeholder="End Time"></div>
+            <div class="col-md-2"><input type="date" class="form-control" name="start_date" placeholder="Start Date"></div>
+            <div class="col-md-2"><input type="date" class="form-control" name="end_date" placeholder="End Date"></div>
+            <div class="col-md-2 d-flex align-items-center"><button type="button" class="btn btn-danger btn-sm remove-entry">Remove</button></div>
+          </div>
+        `;
+      });
+  }
+
+  // Add/Remove entry logic
+  table.addEventListener('click', function(e) {
+    if (e.target.classList.contains('add-more')) {
+      const form = e.target.closest('form');
+      const entryList = form.querySelector('.entry-list');
+      let templateEntry = entryList.querySelector('.entry-set');
+      
+      // If no entries exist, create a new one from the original template
+      if (!templateEntry) {
+        templateEntry = document.createElement('div');
+        templateEntry.className = 'entry-set row g-2 mb-2';
+        templateEntry.innerHTML = `
+          <div class="col-md-2"><input type="url" class="form-control" name="url" placeholder="URL"></div>
+          <div class="col-md-2"><input type="time" class="form-control" name="start_time" placeholder="Start Time"></div>
+          <div class="col-md-2"><input type="time" class="form-control" name="end_time" placeholder="End Time"></div>
+          <div class="col-md-2"><input type="date" class="form-control" name="start_date" placeholder="Start Date"></div>
+          <div class="col-md-2"><input type="date" class="form-control" name="end_date" placeholder="End Date"></div>
+          <div class="col-md-2 d-flex align-items-center"><button type="button" class="btn btn-danger btn-sm remove-entry">Remove</button></div>
+        `;
+      }
+      
+      const newEntry = templateEntry.cloneNode(true);
+      // Clear values
+      newEntry.querySelectorAll('input').forEach(inp => inp.value = '');
+      // Show remove button
+      newEntry.querySelector('.remove-entry').style.display = 'block';
+      entryList.appendChild(newEntry);
+    }
+    if (e.target.classList.contains('remove-entry')) {
+      const entry = e.target.closest('.entry-set');
+      entry.remove();
+    }
+    
+    // Save scheduling data
+    if (e.target.classList.contains('save-scheduling')) {
+      const offerId = e.target.getAttribute('data-offer-id');
+      const form = e.target.closest('.multi-entry-form');
+      const entrySets = form.querySelectorAll('.entry-set');
+      
+      const schedulingData = [];
+      entrySets.forEach(entrySet => {
+        const url = entrySet.querySelector('input[name="url"]').value;
+        const startTime = entrySet.querySelector('input[name="start_time"]').value;
+        const endTime = entrySet.querySelector('input[name="end_time"]').value;
+        const startDate = entrySet.querySelector('input[name="start_date"]').value;
+        const endDate = entrySet.querySelector('input[name="end_date"]').value;
+        
+        if (url || startTime || endTime || startDate || endDate) {
+          schedulingData.push({
+            url: url,
+            start_time: startTime,
+            end_time: endTime,
+            start_date: startDate,
+            end_date: endDate
+          });
+        }
+      });
+      
+      // Show loading state
+      const originalText = e.target.textContent;
+      e.target.textContent = 'Saving...';
+      e.target.disabled = true;
+      
+      fetch('/admin/save_url_scheduling', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          offer_id: offerId,
+          scheduling_data: schedulingData
+        })
+      })
+      .then(response => response.json())
+              .then(data => {
+          if (data.success) {
+            e.target.textContent = 'Saved!';
+            e.target.classList.remove('btn-success');
+            e.target.classList.add('btn-outline-success');
+            
+            // Update the scheduling count in the button
+            const expandBtn = document.querySelector(`[data-offer-id="${offerId}"].expand-scheduling-btn`);
+            const countSpan = expandBtn ? expandBtn.querySelector('.scheduling-count') : null;
+            if (countSpan) {
+              const newCount = schedulingData.length;
+              countSpan.textContent = newCount;
+              // Update button appearance based on count
+              if (newCount > 0) {
+                expandBtn.classList.remove('btn-outline-info');
+                expandBtn.classList.add('btn-info');
+              } else {
+                expandBtn.classList.remove('btn-info');
+                expandBtn.classList.add('btn-outline-info');
+              }
+            }
+            
+            setTimeout(() => {
+              e.target.textContent = originalText;
+              e.target.classList.remove('btn-outline-success');
+              e.target.classList.add('btn-success');
+              e.target.disabled = false;
+            }, 2000);
+          } else {
+            alert('Error saving: ' + (data.error || 'Unknown error'));
+            e.target.textContent = originalText;
+            e.target.disabled = false;
+          }
+        })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Network error while saving');
+        e.target.textContent = originalText;
+        e.target.disabled = false;
+      });
+    }
+  });
+  
+  // Load scheduling counts for all offers when page loads
+  function loadAllSchedulingCounts() {
+    const expandButtons = document.querySelectorAll('.expand-scheduling-btn');
+    expandButtons.forEach(btn => {
+      const offerId = btn.getAttribute('data-offer-id');
+      fetch(`/admin/get_url_scheduling/${offerId}`)
+        .then(response => response.json())
+        .then(data => {
+          const countSpan = btn.querySelector('.scheduling-count');
+          const schedulingCount = data.success ? data.scheduling_data.length : 0;
+          
+          if (countSpan) {
+            countSpan.textContent = schedulingCount;
+            // Update button appearance based on count
+            if (schedulingCount > 0) {
+              btn.classList.remove('btn-outline-info');
+              btn.classList.add('btn-info');
+            } else {
+              btn.classList.remove('btn-info');
+              btn.classList.add('btn-outline-info');
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Error loading scheduling count for offer', offerId, error);
+        });
+    });
+  }
+  
+  // Load counts when page is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadAllSchedulingCounts);
+  } else {
+    loadAllSchedulingCounts();
+  }
+})();
+</script>
+
+<script>
+// Bulk Offer Scheduling Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllOffers = document.getElementById('selectAllOffers');
+    const offerCheckboxes = document.querySelectorAll('.offer-checkbox');
+    const applyBulkOfferBtn = document.getElementById('applyBulkOfferBtn');
+    const addMoreBulkEntriesBtn = document.getElementById('addMoreBulkEntries');
+    const bulkEntryList = document.querySelector('.bulk-entry-list');
+
+    function updateBulkOfferBtnState() {
+        const anyChecked = Array.from(offerCheckboxes).some(cb => cb.checked);
+        const hasAnyUrl = Array.from(document.querySelectorAll('.bulk-entry-set input[type="url"]')).some(input => input.value.trim() !== '');
+        const shouldEnable = anyChecked && hasAnyUrl;
+        applyBulkOfferBtn.disabled = !shouldEnable;
+        console.log('Button state update:', { anyChecked, hasAnyUrl, shouldEnable, disabled: applyBulkOfferBtn.disabled });
+    }
+    
+    function updateRemoveButtonsVisibility() {
+        const entrySets = document.querySelectorAll('.bulk-entry-set');
+        const firstRemoveBtn = document.querySelector('.bulk-entry-set:first-child .remove-bulk-entry');
+        
+        if (entrySets.length > 1 && firstRemoveBtn) {
+            firstRemoveBtn.style.display = 'block';
+        } else if (firstRemoveBtn) {
+            firstRemoveBtn.style.display = 'none';
+        }
+    }
+
+    // Select All logic for offers
+    if (selectAllOffers) {
+        selectAllOffers.addEventListener('change', function() {
+            offerCheckboxes.forEach(cb => {
+                cb.checked = selectAllOffers.checked;
+            });
+            updateBulkOfferBtnState();
+        });
+    }
+
+    // Individual checkbox logic for offers
+    offerCheckboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            // If any unchecked, uncheck selectAll; if all checked, check selectAll
+            const allChecked = Array.from(offerCheckboxes).every(cb => cb.checked);
+            if (selectAllOffers) {
+                selectAllOffers.checked = allChecked;
+            }
+            updateBulkOfferBtnState();
+        });
+    });
+
+    // Add More Entries functionality
+    if (addMoreBulkEntriesBtn) {
+        addMoreBulkEntriesBtn.addEventListener('click', function() {
+            const newEntrySet = document.createElement('div');
+            newEntrySet.className = 'bulk-entry-set row g-3 align-items-end mb-3';
+            newEntrySet.innerHTML = `
+                <div class="col-md-2">
+                    <label class="form-label">URL</label>
+                    <input type="url" class="form-control bulk-url-input" placeholder="https://example.com">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Start Time</label>
+                    <input type="time" class="form-control bulk-start-time-input">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">End Time</label>
+                    <input type="time" class="form-control bulk-end-time-input">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" class="form-control bulk-start-date-input">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">End Date</label>
+                    <input type="date" class="form-control bulk-end-date-input">
+                </div>
+                <div class="col-md-2 d-flex align-items-center">
+                    <button type="button" class="btn btn-danger btn-sm remove-bulk-entry">
+                        <i class="fas fa-trash me-1"></i>Remove
+                    </button>
+                </div>
+            `;
+            
+            bulkEntryList.appendChild(newEntrySet);
+            
+            // Add event listeners to new inputs
+            const newInputs = newEntrySet.querySelectorAll('input');
+            newInputs.forEach(input => {
+                input.addEventListener('input', updateBulkOfferBtnState);
+            });
+            
+            // Add remove functionality
+            const removeBtn = newEntrySet.querySelector('.remove-bulk-entry');
+            removeBtn.addEventListener('click', function() {
+                newEntrySet.remove();
+                updateBulkOfferBtnState();
+                updateRemoveButtonsVisibility();
+            });
+            
+            // Show remove button on first entry when we have multiple entries
+            updateRemoveButtonsVisibility();
+        });
+    }
+
+    // Add remove functionality to the first entry set
+    const firstEntrySet = document.querySelector('.bulk-entry-set');
+    if (firstEntrySet) {
+        const removeBtn = firstEntrySet.querySelector('.remove-bulk-entry');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                firstEntrySet.remove();
+                updateBulkOfferBtnState();
+                updateRemoveButtonsVisibility();
+            });
+        }
+    }
+
+    // Input fields logic for bulk offer scheduling - use event delegation
+    document.addEventListener('input', function(e) {
+        if (e.target.matches('.bulk-entry-set input')) {
+            updateBulkOfferBtnState();
+        }
+    });
+
+    // Apply bulk offer scheduling
+    if (applyBulkOfferBtn) {
+        console.log('Apply button found, adding event listener');
+        applyBulkOfferBtn.addEventListener('click', function() {
+            console.log('Apply button clicked!');
+            const selectedOffers = Array.from(offerCheckboxes)
+                .filter(cb => cb.checked)
+                .map(cb => ({
+                    offer_id: cb.value, // This is my_row_id
+                    offer_name: cb.getAttribute('data-offer-name'),
+                    offer_id_value: cb.getAttribute('data-offer-id')
+                }));
+
+            if (selectedOffers.length === 0) {
+                alert('Please select at least one offer.');
+                return;
+            }
+            
+            console.log('Selected offers count:', selectedOffers.length);
+
+            // Collect all scheduling data from all entry sets
+            const entrySets = document.querySelectorAll('.bulk-entry-set');
+            const schedulingData = [];
+            
+            entrySets.forEach(entrySet => {
+                const url = entrySet.querySelector('input[type="url"]').value.trim();
+                const timeInputs = entrySet.querySelectorAll('input[type="time"]');
+                const dateInputs = entrySet.querySelectorAll('input[type="date"]');
+                
+                const startTime = timeInputs[0] ? timeInputs[0].value || null : null;
+                const endTime = timeInputs[1] ? timeInputs[1].value || null : null;
+                const startDate = dateInputs[0] ? dateInputs[0].value || null : null;
+                const endDate = dateInputs[1] ? dateInputs[1].value || null : null;
+                
+                if (url) {
+                    schedulingData.push({
+                        url: url,
+                        start_time: startTime,
+                        end_time: endTime,
+                        start_date: startDate,
+                        end_date: endDate
+                    });
+                }
+            });
+            
+            if (schedulingData.length === 0) {
+                alert('Please enter at least one URL.');
+                return;
+            }
+            
+            console.log('Scheduling data to be applied:', schedulingData);
+            console.log('Selected offers:', selectedOffers);
+
+            // Show loading state
+            const originalText = applyBulkOfferBtn.textContent;
+            applyBulkOfferBtn.textContent = 'Applying...';
+            applyBulkOfferBtn.disabled = true;
+
+            // Process each selected offer
+            let processedCount = 0;
+            let successCount = 0;
+            let errorCount = 0;
+
+            const processOffer = (offer) => {
+                return fetch('/admin/append_url_scheduling', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        offer_id: offer.offer_id,
+                        scheduling_data: schedulingData
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                        console.error(`Error saving offer ${offer.offer_id}:`, data.error);
+                    }
+                })
+                .catch(error => {
+                    errorCount++;
+                    console.error(`Network error for offer ${offer.offer_id}:`, error);
+                })
+                .finally(() => {
+                    processedCount++;
+                    
+                    // Check if all offers have been processed
+                    if (processedCount === selectedOffers.length) {
+                        // Show final result
+                        if (errorCount === 0) {
+                            // All successful
+                            applyBulkOfferBtn.textContent = 'Applied!';
+                            applyBulkOfferBtn.classList.remove('btn-primary');
+                            applyBulkOfferBtn.classList.add('btn-success');
+                            
+                            // Show success message
+                            const successAlert = document.createElement('div');
+                            successAlert.className = 'alert alert-success alert-dismissible fade show mt-3';
+                            successAlert.innerHTML = `
+                                <i class="fas fa-check-circle me-2"></i>
+                                Successfully applied scheduling to ${successCount} offer(s).
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            `;
+                            
+                            const form = document.getElementById('bulkOfferSchedulingForm');
+                            form.parentNode.insertBefore(successAlert, form.nextSibling);
+                        } else if (successCount === 0) {
+                            // All failed
+                            applyBulkOfferBtn.textContent = 'Failed!';
+                            applyBulkOfferBtn.classList.remove('btn-primary');
+                            applyBulkOfferBtn.classList.add('btn-danger');
+                            alert(`Failed to apply scheduling to any offers. ${errorCount} errors occurred.`);
+                        } else {
+                            // Partial success
+                            applyBulkOfferBtn.textContent = 'Partial!';
+                            applyBulkOfferBtn.classList.remove('btn-primary');
+                            applyBulkOfferBtn.classList.add('btn-warning');
+                            alert(`Applied scheduling to ${successCount} offers, but ${errorCount} failed.`);
+                        }
+                        
+                        // Reset form after 3 seconds
+                        setTimeout(() => {
+                            applyBulkOfferBtn.textContent = originalText;
+                            applyBulkOfferBtn.classList.remove('btn-success', 'btn-danger', 'btn-warning');
+                            applyBulkOfferBtn.classList.add('btn-primary');
+                            applyBulkOfferBtn.disabled = false;
+                            
+                            // Clear form - remove all entry sets except the first one
+                            const entrySets = document.querySelectorAll('.bulk-entry-set');
+                            entrySets.forEach((entrySet, index) => {
+                                if (index === 0) {
+                                    // Clear the first entry set
+                                    entrySet.querySelectorAll('input').forEach(input => input.value = '');
+                                } else {
+                                    // Remove additional entry sets
+                                    entrySet.remove();
+                                }
+                            });
+                            
+                            // Uncheck all checkboxes
+                            offerCheckboxes.forEach(cb => cb.checked = false);
+                            if (selectAllOffers) selectAllOffers.checked = false;
+                            
+                            updateBulkOfferBtnState();
+                        }, 3000);
+                    }
+                });
+            };
+
+            // Process all selected offers
+            selectedOffers.forEach(processOffer);
+        });
+    }
+
+    // Initial state
+    updateBulkOfferBtnState();
+});
+</script>
+{% endblock %} 
+
+
+
+
+<div class="modal fade" id="redirectModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form id="redirectScheduleForm" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Schedule Redirect for Selected Offers</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" title="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="redirectUrl" class="form-label">Redirect URL</label>
+          <input type="url" class="form-control" id="redirectUrl" name="redirectUrl" required placeholder="https://example.com">
+        </div>
+        <div class="mb-3">
+          <label for="activeFrom" class="form-label">Active From</label>
+          <input type="datetime-local" class="form-control" id="activeFrom" name="activeFrom" required>
+        </div>
+        <div class="mb-3">
+          <label for="activeTo" class="form-label">Active To</label>
+          <input type="datetime-local" class="form-control" id="activeTo" name="activeTo" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-success">Schedule</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<button type="button" id="scheduleRedirectBtn" class="btn btn-primary mt-2" disabled>
+  Schedule Redirect
+</button>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form id="bulkInputForm" class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <label for="bulkUrl" class="form-label">Bulk Redirect URL</label>
+        <input type="url" class="form-control" id="bulkUrl" placeholder="https://example.com">
+      </div>
+      <div class="col-md-3">
+        <label for="bulkFrom" class="form-label">Active From</label>
+        <input type="datetime-local" class="form-control" id="bulkFrom">
+      </div>
+      <div class="col-md-3">
+        <label for="bulkTo" class="form-label">Active To</label>
+        <input type="datetime-local" class="form-control" id="bulkTo">
+      </div>
+      <div class="col-md-2">
+        <button type="button" class="btn btn-primary w-100" id="applyBulkBtn">Apply to Selected</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+
+

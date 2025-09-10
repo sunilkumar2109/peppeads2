@@ -1,0 +1,11 @@
+<h2>Available Forms</h2>
+<ul>
+  {% for form in forms %}
+    <li>
+      <a href="{{ url_for('view_form', form_id=form.id) }}">{{ form.title }}</a>
+      (Active until {{ form.active_to.astimezone(pytz.timezone(form.timezone)).strftime('%Y-%m-%d %H:%M %Z') }})
+    </li>
+  {% else %}
+    <li>No forms are currently available.</li>
+  {% endfor %}
+</ul>

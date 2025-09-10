@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1><i class="fas fa-share-alt text-primary"></i> Share Your Form</h1>
+    
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle"></i> Your form "<strong>{{ form.title }}</strong>" is ready to be shared!
+    </div>
+    
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-link"></i> Share Links</h5>
+        </div>
+        <div class="card-body">
+            <p><i class="fas fa-info-circle text-primary"></i> Use these links to share your form with others:</p>
+            
+            <div class="form-group mb-4">
+                <label for="direct-link"><strong>Direct Link:</strong></label>
+                <div class="input-group">
+                    <div class="input-group-prepend">
+                    </div>
+                    {% if form.is_external %}
+                    <input type="text" id="direct-link" class="form-control" value="{{ form.external_url }}" readonly title="Direct Link">
+                    {% else %}
+                    <input type="text" id="direct-link" class="form-control" readonly title="Direct Link">
+                    {% endif %}
+                    <div class="input-group-append">
+                        <button class="btn btn-primary copy-btn" data-clipboard-target="#direct-link">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                </div>
+                {% if form.is_external %}
+                <small class="text-muted"><i class="fas fa-info-circle"></i> This form redirects to an external URL. Share this link directly.</small>
+                {% else %}
+                <small class="text-muted"><i class="fas fa-info-circle"></i> Share this link directly with your audience.</small>
+                {% endif %}
+            </div>
+            
+            <h5 class="mt-4 mb-3"><i class="fas fa-share-alt"></i> Share on Social Media</h5>
+            
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="card shadow-sm hover-card">
+                        <div class="card-body text-center">
+                            <h5><i class="fab fa-facebook fa-2x text-primary mb-3"></i><br>Facebook</h5>
+                            {% if form.is_external %}
+                            <input type="text" id="facebook-link" class="form-control mb-2" value="{{ form.external_url }}" readonly title="Facebook Share Link">
+                            {% else %}
+                            <input type="text" id="facebook-link" class="form-control mb-2" readonly title="Facebook Share Link">
+                            {% endif %}
+                            <div class="btn-group d-flex">
+                                <button class="btn btn-outline-primary copy-btn" data-clipboard-target="#facebook-link">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
+                                <a id="facebook-share" href="#" target="_blank" class="btn btn-primary">
+                                    <i class="fas fa-share"></i> Share
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <div class="card shadow-sm hover-card">
+                        <div class="card-body text-center">
+                            <h5><i class="fab fa-twitter fa-2x text-info mb-3"></i><br>Twitter</h5>
+                            {% if form.is_external %}
+                            <input type="text" id="twitter-link" class="form-control mb-2" value="{{ form.external_url }}" readonly title="Twitter Share Link">
+                            {% else %}
+                            <input type="text" id="twitter-link" class="form-control mb-2" readonly title="Twitter Share Link">
+                            {% endif %}
+                            <div class="btn-group d-flex">
+                                <button class="btn btn-outline-info copy-btn" data-clipboard-target="#twitter-link">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
+                                <a id="twitter-share" href="#" target="_blank" class="btn btn-info">
+                                    <i class="fas fa-share"></i> Share
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <div class="card shadow-sm hover-card">
+                        <div class="card-body text-center">
+                            <h5><i class="fab fa-linkedin fa-2x text-primary mb-3"></i><br>LinkedIn</h5>
+                            {% if form.is_external %}
+                            <input type="text" id="linkedin-link" class="form-control mb-2" value="{{ form.external_url }}" readonly title="LinkedIn Share Link">
+                            {% else %}
+                            <input type="text" id="linkedin-link" class="form-control mb-2" readonly title="LinkedIn Share Link">
+                            {% endif %}
+                            <div class="btn-group d-flex">
+                                <button class="btn btn-outline-primary copy-btn" data-clipboard-target="#linkedin-link">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
+                                <a id="linkedin-share" href="#" target="_blank" class="btn btn-primary">
+                                    <i class="fas fa-share"></i> Share
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group mt-4">
+                <label for="email-link"><strong><i class="fas fa-envelope"></i> Email Campaign Link:</strong></label>
+                <div class="input-group">
+                    <div class="input-group-prepend">
+                    </div>
+                    {% if form.is_external %}
+                    <input type="text" id="email-link" class="form-control" value="{{ form.external_url }}" readonly title="Email Campaign Link">
+                    {% else %}
+                    <input type="text" id="email-link" class="form-control" readonly title="Email Campaign Link">
+                    {% endif %}
+                    <div class="input-group-append">
+                        <button class="btn btn-primary copy-btn" data-clipboard-target="#email-link">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                </div>
+                <small class="text-muted"><i class="fas fa-info-circle"></i> Use this link for email campaigns.</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+          <h4>Postback URL</h4>
+        </div>
+        <div class="card-body">
+          <p>Use this URL to receive form submission data on external sites:</p>
+          <div class="input-group mb-3">
+            <input type="text" class="form-control" id="postbackUrl" value="{{ postback_url }}" readonly title="Postback URL">
+            <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('postbackUrl')">Copy</button>
+          </div>
+          <p class="mt-3 mb-0"><small class="text-muted">
+            This URL accepts the following parameters: username, user_id, status, payout, and transaction_id
+          </small></p>
+        </div>
+    </div>
+    
+    <!-- Embed Form Section -->
+    {% if not form.is_external %}
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-code"></i> Embed Form</h5>
+        </div>
+        <div class="card-body">
+            <p><i class="fas fa-info-circle text-primary"></i> Embed this form on your website using the iframe code below:</p>
+            
+            <div class="form-group mb-4">
+                <label for="iframe-code"><strong>Iframe HTML Code:</strong></label>
+                <div class="input-group">
+                    <textarea id="iframe-code" class="form-control" rows="3" readonly>{{ iframe_code }}</textarea>
+                    <div class="input-group-append">
+                        <button class="btn btn-primary copy-btn" data-clipboard-target="#iframe-code">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                </div>
+                <small class="text-muted mt-2"><i class="fas fa-info-circle"></i> Paste this code into your website's HTML to embed the form.</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="iframe-customize" class="fw-bold">Customize Iframe:</label>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="iframe-width">Width:</label>
+                        <div class="input-group">
+                            <input type="number" id="iframe-width" class="form-control" value="100" min="10" max="2000" aria-label="Iframe width value">
+                            <select id="width-unit" class="form-select" aria-label="Width unit">
+                                <option value="%">%</option>
+                                <option value="px">px</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="iframe-height">Height:</label>
+                        <div class="input-group">
+                            <input type="number" id="iframe-height" class="form-control" value="600" min="50" max="2000" aria-label="Iframe height value">
+                            <span class="input-group-text">px</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="iframe-border">Border:</label>
+                        <div class="input-group">
+                            <select id="iframe-border" class="form-select" aria-label="Iframe border option">
+                                <option value="0">No border</option>
+                                <option value="1">With border</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <button id="update-iframe" class="btn btn-outline-primary mt-2">
+                    <i class="fas fa-sync-alt"></i> Update Code
+                </button>
+            </div>
+            
+            <div class="mt-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">Preview</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="embed-responsive" style="min-height: 300px; border: 1px solid #dee2e6;">
+                            <iframe src="{{ embed_url }}" width="100%" height="300" frameborder="0" id="preview-iframe"></iframe>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <a href="{{ url_for('form_embed_demo', form_id=form.id) }}" class="btn btn-info">
+                    <i class="fas fa-code"></i> See Interactive Demo & Implementation Guide
+                </a>
+                <p class="text-muted mt-2">
+                    <small><i class="fas fa-info-circle"></i> The interactive demo shows how to embed your form and handle form submission events in your website.</small>
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="mt-4">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<style>
+.hover-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.hover-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+}
+.btn-group.d-flex .btn {
+    flex: 1;
+}
+.copy-btn {
+    position: relative;
+}
+.card {
+    border-radius: 8px;
+    overflow: hidden;
+}
+.card-header {
+    font-weight: 500;
+}
+.alert-success {
+    border-left: 5px solid #28a745;
+}
+</style>
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.8/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Generate a random session ID
+    const sessionId = Math.random().toString(36).substring(2);
+    
+    // Function to detect device type
+    function detectDeviceType() {
+        const userAgent = navigator.userAgent.toLowerCase();
+        if (/android|webos|iphone|ipod|blackberry|iemobile|opera mini/i.test(userAgent)) {
+            return 'mobile';
+        } else if (/ipad|tablet|playbook|silk|android(?!.*mobile)/i.test(userAgent)) {
+            return 'tablet';
+        }
+        return 'desktop';
+    }
+    
+    // Function to add session ID and device type to a URL
+    function addTrackingParams(url) {
+        const cleanUrl = url.replace(/&amp;/g, '&');
+        const deviceType = detectDeviceType();
+        return `${cleanUrl}${cleanUrl.includes('?') ? '&' : '?'}session_id=${sessionId}&device=${deviceType}`;
+    }
+    
+    // Update all share links with tracking parameters
+    const shareLinks = {
+        'direct-link': "{{ share_url }}",
+        'facebook-link': "{{ share_urls['facebook'] }}",
+        'twitter-link': "{{ share_urls['twitter'] }}",
+        'linkedin-link': "{{ share_urls['linkedin'] }}",
+        'email-link': "{{ share_urls['email'] }}"
+    };
+    
+    // Only modify elements if the form is not external
+    {% if not form.is_external %}
+    Object.entries(shareLinks).forEach(([id, url]) => {
+        const element = document.getElementById(id);
+         if (id === 'direct-link') {
+            element.value = url;  // no tracking params
+        } else {
+            element.value = addTrackingParams(url);  // with tracking params
+        }
+    });
+    
+    // Update social share buttons
+    const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(document.getElementById('facebook-link').value)}`;
+    document.getElementById('facebook-share').href = facebookShareUrl;
+    
+    const twitterText = `Check out this form: ${encodeURIComponent(document.getElementById('twitter-link').value)}`;
+    document.getElementById('twitter-share').href = `https://twitter.com/intent/tweet?text=${twitterText}`;
+    
+    const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(document.getElementById('linkedin-link').value)}`;
+    document.getElementById('linkedin-share').href = linkedinUrl;
+    {% else %}
+    // For external forms, ensure the social share buttons also use the external URL
+    const externalFormUrl = '{{ form.external_url }}';
+    document.getElementById('facebook-share').href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(externalFormUrl)}`;
+    document.getElementById('twitter-share').href = `https://twitter.com/intent/tweet?text=Check out this external form: ${encodeURIComponent(externalFormUrl)}`;
+    document.getElementById('linkedin-share').href = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(externalFormUrl)}`;
+    {% endif %}
+
+    // Initialize clipboard.js
+    const clipboard = new ClipboardJS('.copy-btn');
+    
+    // Add copy success notification
+    clipboard.on('success', function(e) {
+        const originalText = e.trigger.innerHTML;
+        e.trigger.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        
+        setTimeout(() => {
+            e.trigger.innerHTML = originalText;
+        }, 2000);
+        
+        e.clearSelection();
+    });
+    
+    // Handle iframe customization - only for internal forms
+    {% if not form.is_external %}
+    const updateIframe = document.getElementById('update-iframe');
+    if (updateIframe) {
+        updateIframe.addEventListener('click', function() {
+            const width = document.getElementById('iframe-width').value;
+            const widthUnit = document.getElementById('width-unit').value;
+            const height = document.getElementById('iframe-height').value;
+            const border = document.getElementById('iframe-border').value;
+            const embedUrl = "{{ embed_url }}";
+            
+            const newIframeCode = `<iframe src="${embedUrl}" width="${width}${widthUnit}" height="${height}" frameborder="${border}" marginheight="0" marginwidth="0">Loading…</iframe>`;
+            
+            document.getElementById('iframe-code').value = newIframeCode;
+            
+            const previewIframe = document.getElementById('preview-iframe');
+            previewIframe.width = width + widthUnit;
+            previewIframe.height = Math.min(height, 300);
+            previewIframe.frameBorder = border;
+        });
+    }
+    {% endif %}
+    
+    // Copy to clipboard function
+    window.copyToClipboard = function(elementId) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.select();
+            element.setSelectionRange(0, 99999); // For mobile devices
+            document.execCommand('copy');
+            showCopySuccess();
+        }
+    };
+});
+
+function showCopySuccess() {
+    const toast = document.getElementById('copySuccess');
+    if (toast) {
+        toast.style.display = 'block';
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 2000);
+    }
+}
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "admin_base.html" %}
+{% block title %}Time-Based Feature{% endblock %}
+
+{% block content %}
+    <h2>Special Time-Based Feature</h2>
+    {% if feature_active %}
+        <div class="alert alert-success">
+            🎉 The feature is active! Enjoy it between 3–6 PM.
+        </div>
+        <!-- Your feature content here -->
+    {% else %}
+        <div class="alert alert-warning">
+            This feature is only available between 3–6 PM.
+        </div>
+    {% endif %}
+{% endblock %}

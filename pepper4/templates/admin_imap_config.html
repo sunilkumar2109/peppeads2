@@ -1,0 +1,33 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h2>IMAP (Reply Monitoring) Configuration</h2>
+  <form method="POST">
+    <div class="mb-2">
+      <label>IMAP Server</label>
+      <input type="text" class="form-control" name="imap_server" value="{{ imap_config.imap_server if imap_config else '' }}" required>
+    </div>
+    <div class="mb-2">
+      <label>IMAP Port</label>
+      <input type="number" class="form-control" name="imap_port" value="{{ imap_config.imap_port if imap_config else 993 }}" required>
+    </div>
+    <div class="mb-2">
+      <label>Username</label>
+      <input type="text" class="form-control" name="imap_username" value="{{ imap_config.imap_username if imap_config else '' }}" required>
+    </div>
+    <div class="mb-2">
+      <label>Password</label>
+      <input type="password" class="form-control" name="imap_password" value="{{ imap_config.imap_password if imap_config else '' }}" required>
+    </div>
+    <div class="mb-2">
+      <label>Mailbox (optional)</label>
+      <input type="text" class="form-control" name="mailbox" value="{{ imap_config.mailbox if imap_config else 'INBOX' }}">
+    </div>
+    <div class="mb-2">
+      <label>Label (optional)</label>
+      <input type="text" class="form-control" name="label" value="{{ imap_config.label if imap_config else '' }}">
+    </div>
+    <button type="submit" class="btn btn-primary mt-2">Save IMAP Config</button>
+  </form>
+</div>
+{% endblock %}

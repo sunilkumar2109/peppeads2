@@ -1,0 +1,493 @@
+{% extends "base.html" %}
+
+{% block title %}Postback URL Tester{% endblock %}
+
+{% block content %}
+<style>
+  .card {
+    transition: all 0.3s ease;
+    border: none;
+    backdrop-filter: blur(10px);
+  }
+  
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+  }
+  
+  .btn {
+    transition: all 0.3s ease;
+    border-radius: 8px;
+  }
+  
+  .btn:hover {
+    transform: translateY(-1px);
+  }
+  
+  .form-control, .form-select {
+    border-radius: 8px;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+  }
+  
+  .form-control:focus, .form-select:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+    transform: scale(1.02);
+  }
+  
+  .badge-animated {
+    animation: none;
+  }
+  
+  .badge-running {
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+  
+  .log-entry {
+    padding: 8px 12px;
+    margin: 4px 0;
+    border-radius: 6px;
+    background: rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+  }
+  
+  .log-entry.text-success {
+    border-left-color: #28a745;
+    background: rgba(40,167,69,0.1);
+  }
+  
+  .log-entry.text-danger {
+    border-left-color: #dc3545;
+    background: rgba(220,53,69,0.1);
+  }
+  
+  .status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
+  
+  .status-running {
+    background: #28a745;
+    animation: blink 1.5s infinite;
+  }
+  
+  .status-stopped {
+    background: #6c757d;
+  }
+  
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.3; }
+  }
+  
+  .placeholder-container {
+    background: rgba(0,123,255,0.05);
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 10px;
+    border: 1px dashed #007bff;
+  }
+  
+  .job-header {
+    background: linear-gradient(135deg, rgba(0,123,255,0.1), rgba(108,117,125,0.1));
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+  
+  .url-display {
+    background: rgba(0,0,0,0.05);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9em;
+    word-break: break-all;
+  }
+</style>
+
+<div class="container my-5">
+  <div class="text-center mb-5">
+    <h1 class="display-4 mb-3">
+      <i class="fas fa-satellite-dish text-primary me-3"></i>
+      Postback URL Tester
+    </h1>
+    <p class="lead text-muted">Test and monitor your postback URLs with real-time logging</p>
+  </div>
+
+  <div class="card shadow-lg mb-4">
+    <div class="card-header bg-primary text-white">
+      <h4 class="mb-0">
+        <i class="fas fa-play-circle me-2"></i>
+        Start New Test
+      </h4>
+    </div>
+    <div class="card-body">
+      <form id="postbackForm">
+        <div class="row">
+          <div class="col-md-12 mb-3">
+            <label for="postbackUrl" class="form-label">
+              <i class="fas fa-link text-primary me-2"></i>
+              Postback URL:
+            </label>
+            <input type="text" class="form-control form-control-lg" id="postbackUrl" value="{{ postback_url }}"
+              placeholder="https://example.com/postback?user={user_id}&event={event_id}" required />
+            <div class="form-text">Use {placeholder} syntax for dynamic values</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="interval" class="form-label">
+              <i class="fas fa-clock text-info me-2"></i>
+              Interval (seconds):
+            </label>
+            <input type="number" class="form-control" id="interval" min="1" value="30" required />
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <label for="duration" class="form-label">
+              <i class="fas fa-hourglass-half text-warning me-2"></i>
+              Duration (minutes):
+            </label>
+            <input type="number" class="form-control" id="duration" min="1" value="10" required />
+          </div>
+        </div>
+
+        <div class="mb-3" id="placeholderInputs"></div>
+
+        <div class="d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-outline-secondary" id="generatePlaceholdersBtn">
+            <i class="fas fa-magic me-2"></i>
+            Generate Inputs
+          </button>
+          <button type="submit" class="btn btn-primary btn-lg">
+            <i class="fas fa-rocket me-2"></i>
+            Start Test
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="jobList">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+      <h4 class="mb-0">
+        <i class="fas fa-tasks text-success me-2"></i>
+        My Postback Jobs
+      </h4>
+      <button class="btn btn-outline-primary btn-sm" onclick="location.reload()">
+        <i class="fas fa-sync-alt me-1"></i>
+        Refresh
+      </button>
+    </div>
+    
+    {% for job in jobs %}
+    <div class="card mb-3 shadow-sm" data-job-id="{{ job.id }}">
+      <div class="card-body">
+        <div class="job-header">
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+              <h5 class="mb-2">
+                <i class="fas fa-cog me-2"></i>
+                Job #{{ job.id }}
+                <span class="status-indicator status-{{ 'running' if job.status == 'running' else 'stopped' }}"></span>
+                <span class="badge status-badge bg-{{ 'success' if job.status == 'running' else 'secondary' }} {{ 'badge-running' if job.status == 'running' else '' }}">
+                  {{ job.status }}
+                </span>
+              </h5>
+              
+              <div class="mb-2">
+                <strong>URL:</strong>
+                <div class="url-display mt-1">{{ job.url_template }}</div>
+              </div>
+              
+              <div class="row">
+                <div class="col-sm-4">
+                  <small class="text-muted">
+                    <i class="fas fa-clock me-1"></i>
+                    Interval: <strong>{{ job.interval }}s</strong>
+                  </small>
+                </div>
+                <div class="col-sm-4">
+                  <small class="text-muted">
+                    <i class="fas fa-hourglass-half me-1"></i>
+                    Duration: <strong>{{ job.duration }}m</strong>
+                  </small>
+                </div>
+                <div class="col-sm-4">
+                  <small class="text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Status: <strong>{{ job.status }}</strong>
+                  </small>
+                </div>
+              </div>
+            </div>
+            
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-danger stop-btn" 
+                onclick="stopJob({{ job.id }})" 
+                {% if job.status != 'running' %}disabled{% endif %}>
+                <i class="fas fa-stop me-1"></i>
+                Stop
+              </button>
+              <button class="btn btn-sm btn-outline-primary" onclick="toggleLogs({{ job.id }})">
+                <i class="fas fa-list-alt me-1"></i>
+                Logs
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mt-3 d-none" id="logs-{{ job.id }}">
+          <h6 class="text-muted mb-3">
+            <i class="fas fa-terminal me-2"></i>
+            Request Logs
+          </h6>
+          {% for log in logs[job.id] %}
+          <div class="log-entry text-{{ 'success' if log.status == 'success' else 'danger' }}">
+            <strong>[{{ log.timestamp.strftime('%H:%M:%S') }}]</strong>
+            <span class="badge bg-{{ 'success' if log.status == 'success' else 'danger' }} me-2">
+              {{ log.status|upper }}
+            </span>
+            <strong>{{ log.response_code }}</strong> - {{ log.response_text[:100] }}
+            {% if log.response_text|length > 100 %}...{% endif %}
+          </div>
+          {% else %}
+          <div class="text-muted text-center py-3">
+            <i class="fas fa-info-circle me-2"></i>
+            No logs yet. Logs will appear here when requests are made.
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+      <i class="fas fa-inbox text-muted" style="font-size: 3rem;"></i>
+      <h5 class="text-muted mt-3">No jobs yet</h5>
+      <p class="text-muted">Create your first postback test above to get started.</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+  // Parse {placeholders} from URL
+  function parsePlaceholders(url) {
+    const regex = /{(\w+)}/g;
+    let match, keys = [];
+    while ((match = regex.exec(url)) !== null) {
+      keys.push(match[1]);
+    }
+    return keys;
+  }
+
+  // Toggle log visibility
+  function toggleLogs(jobId) {
+    const logDiv = document.getElementById('logs-' + jobId);
+    logDiv.classList.toggle('d-none');
+
+    if (!logDiv.classList.contains('d-none')) {
+      // Start polling every 5 seconds
+      fetchLogs(jobId);
+      const intervalKey = 'logInterval_' + jobId;
+      if (!window[intervalKey]) {
+        window[intervalKey] = setInterval(() => fetchLogs(jobId), 5000);
+      }
+    }
+  }
+
+  // Stop job via API
+  function stopJob(jobId) {
+    if (!confirm('Are you sure you want to stop this job?')) return;
+    
+    fetch(`/stop_postback_test/${jobId}`, { method: 'POST' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'stopped') {
+          showNotification('Job stopped successfully!', 'success');
+          setTimeout(() => location.reload(), 1000);
+        }
+      })
+      .catch(err => {
+        showNotification('Error stopping job', 'danger');
+      });
+  }
+
+  // Auto-generate placeholder inputs when URL changes
+  document.getElementById('postbackUrl').addEventListener('input', function() {
+    const url = this.value.trim();
+    const keys = parsePlaceholders(url);
+    const container = document.getElementById('placeholderInputs');
+    
+    if (keys.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+    
+    container.innerHTML = '<div class="placeholder-container"><h6 class="mb-3"><i class="fas fa-edit me-2"></i>Placeholder Values</h6>';
+    keys.forEach(key => {
+      container.innerHTML += `
+        <div class="mb-3">
+          <label class="form-label">Value for <code>{${key}}</code>:</label>
+          <input type="text" class="form-control" name="param-${key}" placeholder="Enter value for ${key}" required />
+        </div>`;
+    });
+    container.innerHTML += '</div>';
+  });
+
+  // Generate input fields for placeholders
+  document.getElementById('generatePlaceholdersBtn').addEventListener('click', () => {
+    const url = document.getElementById('postbackUrl').value.trim();
+    const keys = parsePlaceholders(url);
+    const container = document.getElementById('placeholderInputs');
+    
+    if (keys.length === 0) {
+      container.innerHTML = '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>No placeholders found in URL</div>';
+      return;
+    }
+    
+    container.innerHTML = '<div class="placeholder-container"><h6 class="mb-3"><i class="fas fa-edit me-2"></i>Placeholder Values</h6>';
+    keys.forEach(key => {
+      container.innerHTML += `
+        <div class="mb-3">
+          <label class="form-label">Value for <code>{${key}}</code>:</label>
+          <input type="text" class="form-control" name="param-${key}" placeholder="Enter value for ${key}" required />
+        </div>`;
+    });
+    container.innerHTML += '</div>';
+  });
+
+  // Handle form submission
+  document.getElementById('postbackForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const url = document.getElementById('postbackUrl').value.trim();
+    const interval = parseInt(document.getElementById('interval').value.trim());
+    const duration = parseInt(document.getElementById('duration').value.trim());
+
+    const paramInputs = document.querySelectorAll('[name^="param-"]');
+    const parameters = {};
+    paramInputs.forEach(input => {
+      const key = input.name.replace('param-', '');
+      parameters[key] = input.value.trim();
+    });
+
+    // Show loading state
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Starting...';
+    submitBtn.disabled = true;
+
+    fetch('/start_postback_test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, interval, duration, parameters })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'started') {
+          showNotification('Postback test started successfully!', 'success');
+          setTimeout(() => window.location.reload(), 1000);
+        }
+      })
+      .catch(err => {
+        showNotification('Error starting test', 'danger');
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+      });
+  });
+
+  function fetchLogs(jobId) {
+    fetch(`/get_postback_logs/${jobId}`)
+      .then(res => res.json())
+      .then(logs => {
+        const logDiv = document.getElementById('logs-' + jobId);
+        if (!logDiv) return;
+
+        logDiv.innerHTML = '<h6 class="text-muted mb-3"><i class="fas fa-terminal me-2"></i>Request Logs</h6>';
+        
+        if (logs.length === 0) {
+          logDiv.innerHTML += '<div class="text-muted text-center py-3"><i class="fas fa-info-circle me-2"></i>No logs yet. Logs will appear here when requests are made.</div>';
+          return;
+        }
+
+        logs.forEach(log => {
+          const logLine = document.createElement('div');
+          logLine.className = 'log-entry text-' + (log.status === 'success' ? 'success' : 'danger');
+          logLine.innerHTML = `
+            <strong>[${log.timestamp}]</strong>
+            <span class="badge bg-${log.status === 'success' ? 'success' : 'danger'} me-2">${log.status.toUpperCase()}</span>
+            <strong>${log.code}</strong> - ${log.text}
+          `;
+          logDiv.appendChild(logLine);
+        });
+      });
+  }
+
+  // Simple notification function
+  function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+      <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+      ${message}
+    `;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.remove();
+    }, 3000);
+  }
+
+  // Auto-refresh job statuses every 10 seconds
+  function refreshJobStatuses() {
+    fetch('/get_job_statuses')
+      .then(res => res.json())
+      .then(jobs => {
+        jobs.forEach(job => {
+          const statusBadge = document.querySelector(`[data-job-id="${job.id}"] .status-badge`);
+          const stopButton = document.querySelector(`[data-job-id="${job.id}"] .stop-btn`);
+          const statusIndicator = document.querySelector(`[data-job-id="${job.id}"] .status-indicator`);
+          
+          if (statusBadge) {
+            // Update badge
+            statusBadge.className = `badge status-badge bg-${job.status === 'running' ? 'success' : 'secondary'} ${job.status === 'running' ? 'badge-running' : ''}`;
+            statusBadge.textContent = job.status;
+            
+            // Update stop button
+            if (stopButton) {
+              stopButton.disabled = job.status !== 'running';
+            }
+            
+            // Update status indicator
+            if (statusIndicator) {
+              statusIndicator.className = `status-indicator status-${job.status === 'running' ? 'running' : 'stopped'}`;
+            }
+          }
+        });
+      })
+      .catch(err => {
+        console.log('Status refresh failed:', err);
+      });
+  }
+
+  // Start auto-refresh when page loads
+  document.addEventListener('DOMContentLoaded', function() {
+    // Refresh every 10 seconds
+    setInterval(refreshJobStatuses, 10000);
+  });
+</script>
+{% endblock %}

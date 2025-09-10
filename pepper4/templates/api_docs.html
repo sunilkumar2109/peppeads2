@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}API Documentation{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>API Documentation</h2>
+    <p>All endpoints require an API key in the header: <code>X-API-Key: your_api_key_here</code></p>
+    <h4>Available Endpoints</h4>
+    <ul>
+        <li><strong>GET /api/forms</strong><br>
+            <small>Query params: <code>type</code> (ai_generated/external), <code>active</code> (true/false)</small>
+        </li>
+        <li><strong>GET /api/forms/&lt;id&gt;</strong><br>
+            <small>Get detailed information about a specific form</small>
+        </li>
+        <li><strong>GET /api/stats</strong><br>
+            <small>Get overall statistics about forms</small>
+        </li>
+    </ul>
+    <h4>Example Usage</h4>
+    <pre>curl -H "X-API-Key: your_api_key_here" https://your-domain.com/api/forms</pre>
+    <h4>API Tester</h4>
+    <p>Use the <a href="/api-tester">API Tester</a> page to try your API key and endpoints interactively.</p>
+</div>
+{% endblock %} 

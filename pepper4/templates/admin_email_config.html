@@ -1,0 +1,71 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Email Configuration & Bulk Send</h2>
+  <div class="row">
+    <div class="col-md-6">
+      <form method="POST" action="{{ url_for('admin_email_config') }}">
+        <h4>Email Settings</h4>
+        <div class="mb-2">
+          <label>SMTP Server</label>
+          <input type="text" class="form-control" name="smtp_server" value="{{ config.smtp_server if config else '' }}" required>
+        </div>
+        <div class="mb-2">
+          <label>SMTP Port</label>
+          <input type="number" class="form-control" name="smtp_port" value="{{ config.smtp_port if config else 587 }}" required>
+        </div>
+        <div class="mb-2">
+          <label>Username</label>
+          <input type="text" class="form-control" name="smtp_username" value="{{ config.smtp_username if config else '' }}" required>
+        </div>
+        <div class="mb-2">
+          <label>Password</label>
+          <input type="password" class="form-control" name="smtp_password" value="{{ config.smtp_password if config else '' }}" required>
+        </div>
+        <div class="mb-2">
+          <label>Sender Name</label>
+          <input type="text" class="form-control" name="sender_name" value="{{ config.sender_name if config else '' }}">
+        </div>
+        <div class="mb-2">
+          <label>Sender Email</label>
+          <input type="email" class="form-control" name="sender_email" value="{{ config.sender_email if config else '' }}" required>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="use_tls" id="use_tls" {% if config and config.use_tls %}checked{% endif %}>
+          <label class="form-check-label" for="use_tls">Use TLS</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="use_ssl" id="use_ssl" {% if config and config.use_ssl %}checked{% endif %}>
+          <label class="form-check-label" for="use_ssl">Use SSL</label>
+        </div>
+        <button type="submit" class="btn btn-primary mt-2">Save Config</button>
+      </form>
+    </div>
+    <div class="col-md-6">
+      <form method="POST" action="{{ url_for('admin_send_bulk_email') }}">
+        <h4>Bulk Email Send</h4>
+        <h3>Select Users</h3>
+        {% for user in users %}
+          <label>
+            <input type="checkbox" name="user_ids" value="{{ user.id }}">
+            {{ user.email }}
+          </label><br>
+        {% endfor %}
+
+        <h3>Select Offers</h3>
+        {% for offer in offers %}
+          <label>
+            <input type="checkbox" name="offer_ids" value="{{ offer.my_row_id }}">
+            {{ offer.offer_name }}
+          </label><br>
+        {% endfor %}
+
+        <h3>Subject</h3>
+        <input type="text" name="subject" required><br><br>
+
+        <button type="submit">Send Bulk Email</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

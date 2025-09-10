@@ -1,0 +1,115 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Response Details{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <div class="card shadow">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="mb-0">Response Details</h2>
+            <a href="{{ url_for('view_responses', form_id=form.id) }}" class="btn btn-secondary btn-sm">Back to Responses</a>
+        </div>
+        <div class="card-body">
+            <h4 class="mb-3">Basic User & Session Data</h4>
+            <table class="table table-bordered">
+                <tr><th>Session ID</th><td>{{ data.session_id }}</td></tr>
+                <tr><th>Complete ID</th><td>{{ data.complete_id }}</td></tr>
+                <tr><th>IP Address</th><td>{{ data.ip_address }}</td></tr>
+                <tr><th>Actual IP</th><td>{{ response.actual_ip or 'N/A' }}</td></tr>
+                <tr><th>Session IP</th><td>{{ response.session_ip or 'N/A' }}</td></tr>
+                <tr><th>Conversion IP</th><td>{{ response.conversion_ip or 'N/A' }}</td></tr>
+                <tr><th>Location (Geo)</th><td>{{ data.location }}</td></tr>
+                <tr><th>Browser</th><td>{{ data.browser }}</td></tr>
+                <tr><th>Device</th><td>{{ data.device }}</td></tr>
+                <tr><th>Suspicious Activity</th>
+                    <td>
+                        {% if data.is_suspicious %}
+                            <span class="badge bg-danger">Yes</span>
+                        {% else %}
+                            <span class="badge bg-success">No</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr><th>Rejected</th>
+                    <td>
+                        {% if response.is_rejected %}
+                            <span class="badge bg-danger">Yes</span>
+                        {% else %}
+                            <span class="badge bg-success">No</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            </table>
+            <h4 class="mb-3 mt-4">Timing Data</h4>
+            <table class="table table-bordered">
+                <tr><th>Date & Time Clicked</th><td>{{ data.date_time_clicked }}</td></tr>
+                <tr><th>Date & Time Completed</th><td>{{ data.date_time_completed }}</td></tr>
+                <tr><th>Time Spent on Form</th><td>{{ data.time_spent }}</td></tr>
+                <tr><th>Time Per Question</th><td>{{ data.time_per_question }}</td></tr>
+            </table>
+            <h4 class="mb-3 mt-4">Form Answers</h4>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Question</th>
+                        <th>Answer</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for answer in response.answers %}
+                    <tr>
+                        <td>{{ answer.question.question_text }}</td>
+                        <td>{{ answer.answer_text }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if response.geolocation %}
+            <h4 class="mb-3 mt-4">Geolocation Details</h4>
+            <table class="table table-bordered">
+                <tr><th>Latitude</th><td>{{ response.geolocation.latitude or 'N/A' }}</td></tr>
+                <tr><th>Longitude</th><td>{{ response.geolocation.longitude or 'N/A' }}</td></tr>
+                <tr><th>City</th><td>{{ response.geolocation.city or 'N/A' }}</td></tr>
+                <tr><th>Region</th><td>{{ response.geolocation.region or 'N/A' }}</td></tr>
+                <tr><th>Country</th><td>{{ response.geolocation.country or 'N/A' }}</td></tr>
+            </table>
+            {% endif %}
+            <h4 class="mb-3 mt-4">UTM Parameters</h4>
+            <table class="table table-bordered">
+                <tr>
+                    <th>UTM Source</th>
+                    <td>{{ data.utm_source if data.utm_source is defined else (response.utm_source or 'N/A') }}</td>
+                </tr>
+                <tr>
+                    <th>UTM Medium</th>
+                    <td>{{ data.utm_medium if data.utm_medium is defined else (response.utm_medium or 'N/A') }}</td>
+                </tr>
+                <tr>
+                    <th>UTM Campaign</th>
+                    <td>{{ data.utm_campaign if data.utm_campaign is defined else (response.utm_campaign or 'N/A') }}</td>
+                </tr>
+                <tr>
+                    <th>UTM Content</th>
+                    <td>{{ data.utm_content if data.utm_content is defined else (response.utm_content or 'N/A') }}</td>
+                </tr>
+                <tr>
+                    <th>UTM Term</th>
+                    <td>{{ data.utm_term if data.utm_term is defined else (response.utm_term or 'N/A') }}</td>
+                </tr>
+            </table>
+            <h4 class="mb-3 mt-4">Debug: Raw Response Object</h4>
+            <table class="table table-bordered table-sm">
+                <thead><tr><th>Field</th><th>Value</th></tr></thead>
+                <tbody>
+                {% for attr, value in response.__dict__.items() if not attr.startswith('_') %}
+                    <tr>
+                        <td>{{ attr }}</td>
+                        <td>{{ value }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %} 

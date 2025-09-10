@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Offers Digest</title>
+</head>
+<body>
+  <h2>Hello {{ user.email }},</h2>
+  <p>Here are your selected offers:</p>
+  <ul>
+    {% for offer in offers %}
+      <li>
+        <strong>{{ offer.offer_name }}</strong><br>
+        <a href="{{ offer.masked_target_url }}">{{ offer.masked_target_url }}</a><br>
+        {% if offer.masked_image_url %}
+          <img src="{{ offer.masked_image_url }}" alt="Offer Image" style="max-width:120px;">
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</body>
+</html>

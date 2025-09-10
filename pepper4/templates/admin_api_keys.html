@@ -1,0 +1,35 @@
+{% extends "admin_base.html" %}
+
+{% block title %}API Key Management{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>API Key Management</h2>
+    <form method="post" class="mb-4">
+        <div class="input-group">
+            <input type="text" name="description" class="form-control" placeholder="Description (optional)">
+            <button type="submit" class="btn btn-primary">Create API Key</button>
+        </div>
+    </form>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Key</th>
+                <th>Description</th>
+                <th>Created At</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for key in keys %}
+            <tr>
+                <td style="font-family:monospace;">{{ key.key }}</td>
+                <td>{{ key.description or '' }}</td>
+                <td>{{ key.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{% if key.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-danger">Inactive</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %} 

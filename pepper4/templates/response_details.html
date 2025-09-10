@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .response-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+    
+    .response-header {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 15px 15px 0 0;
+        padding: 1.5rem;
+    }
+    
+    .info-section {
+        background: #fff;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+    
+    .info-section h4 {
+        color: #2c3e50;
+        font-weight: 600;
+        margin-bottom: 1.25rem;
+        font-size: 1.25rem;
+    }
+    
+    .info-table {
+        margin-bottom: 0;
+    }
+    
+    .info-table th {
+        color: #6c757d;
+        font-weight: 500;
+        width: 40%;
+        border-top: none;
+    }
+    
+    .info-table td {
+        border-top: none;
+        padding: 0.75rem 0;
+    }
+    
+    .badge {
+        padding: 0.5em 1em;
+        font-weight: 500;
+        border-radius: 6px;
+    }
+    
+    .badge.bg-info {
+        background-color: #e3f2fd !important;
+        color: #1976d2;
+    }
+    
+    .badge.bg-primary {
+        background-color: #e8f5e9 !important;
+        color: #2e7d32;
+    }
+    
+    .badge.bg-success {
+        background-color: #e8f5e9 !important;
+        color: #2e7d32;
+    }
+    
+    .badge.bg-danger {
+        background-color: #ffebee !important;
+        color: #c62828;
+    }
+    
+    .answers-table {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .answers-table thead th {
+        background-color: #f8f9fa;
+        color: #2c3e50;
+        font-weight: 600;
+        border-bottom: 2px solid #e9ecef;
+        padding: 1rem;
+    }
+    
+    .answers-table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+    
+    .answers-table tbody tr:nth-child(even) {
+        background-color: #f8f9fa;
+    }
+    
+    .back-button {
+        background-color: #fff;
+        border: 1px solid #e9ecef;
+        color: #6c757d;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+    
+    .back-button:hover {
+        background-color: #f8f9fa;
+        color: #495057;
+        transform: translateY(-1px);
+    }
+    
+    .map-link {
+        color: #1976d2;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+    }
+    
+    .map-link:hover {
+        color: #1565c0;
+        text-decoration: underline;
+    }
+    
+    .map-link i {
+        font-size: 1.1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <div class="card response-card">
+        <div class="response-header d-flex justify-content-between align-items-center">
+            <h2 class="mb-0" style="color: #2c3e50; font-weight: 600;">Response Details</h2>
+            <a href="{{ url_for('view_responses', form_id=form.id) }}" class="back-button">
+                <i class="fas fa-arrow-left me-2"></i>Back to Responses
+            </a>
+        </div>
+        <div class="card-body p-4">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="info-section">
+                        <h4><i class="fas fa-info-circle me-2"></i>Response Information</h4>
+                        <table class="table info-table">
+                            <tr>
+                                <th>Submission Date:</th>
+                                <td>{{ response['submitted_at'] }}</td>
+                            </tr>
+                            <tr>
+                                <th>Username:</th>
+                                <td>
+                                    {% if response['username'] %}
+                                        <span class="badge bg-info">{{ response['username'] }}</span>
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Company:</th>
+                                <td>
+                                    {% if response['company_name'] %}
+                                        <span class="badge bg-primary">{{ response['company_name'] }}</span>
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Device Type:</th>
+                                <td>{{ response['device_type'] or 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <th>Source:</th>
+                                <td>{{ response['utm_source'] or 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <th>Medium:</th>
+                                <td>{{ response['utm_medium'] or 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <th>Location:</th>
+                                <td>
+                                    {% if response['latitude'] and response['longitude'] %}
+                                        <a href="https://www.google.com/maps?q={{ response['latitude'] }},{{ response['longitude'] }}" 
+                                           target="_blank" rel="noopener" class="map-link">
+                                            <i class="fas fa-map-marker-alt"></i>
+                                            View on Map
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted">Location not provided</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                {% if form.is_quiz %}
+                <div class="col-md-6">
+                    <div class="info-section">
+                        <h4><i class="fas fa-graduation-cap me-2"></i>Quiz Information</h4>
+                        <table class="table info-table">
+                            <tr>
+                                <th>Score:</th>
+                                <td>
+                                    {% if response['max_score'] > 0 %}
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-3">
+                                                {{ response['score'] }}/{{ response['max_score'] }}
+                                            </div>
+                                            <div class="progress flex-grow-1" style="height: 8px;">
+                                                <div class="progress-bar {% if response['passed'] %}bg-success{% else %}bg-danger{% endif %}" 
+                                                     role="progressbar" 
+                                                     style="width: {{ ((response['score'] / response['max_score']) * 100)|round|int }}%">
+                                                </div>
+                                            </div>
+                                            <div class="ms-3">
+                                                {{ ((response['score'] / response['max_score']) * 100)|round|int }}%
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Status:</th>
+                                <td>
+                                    {% if response['passed'] %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle me-1"></i>Passed
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-times-circle me-1"></i>Failed
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="info-section">
+                <h4><i class="fas fa-list-alt me-2"></i>Answers</h4>
+                <div class="table-responsive">
+                    <table class="table answers-table">
+                        <thead>
+                            <tr>
+                                <th>Question</th>
+                                <th>Answer</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for answer in response['answers'] %}
+                            <tr>
+                                <td class="fw-medium">{{ answer['question'] }}</td>
+                                <td>
+                                    {% if answer['question_type'] == 'checkbox' %}
+                                        {% for option in answer['answer'].split(', ') %}
+                                            <span class="badge bg-light text-dark me-1">{{ option }}</span>
+                                        {% endfor %}
+                                    {% else %}
+                                        {{ answer['answer'] or 'N/A' }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
