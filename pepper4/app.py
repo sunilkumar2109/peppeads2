@@ -5,7 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from sqlalchemy.orm import relationship
 from datetime import datetime
-import PyPDF2
+import pypdf2
 from werkzeug.utils import secure_filename
 from flask_migrate import Migrate
 from flask_moment import Moment
@@ -1772,7 +1772,7 @@ def extract_questions_from_pdf(pdf_path):
     questions = []
     try:
         with open(pdf_path, 'rb') as file:
-            reader = PyPDF2.PdfReader(file)
+            reader = pypdf2.PdfReader(file)
             for page in reader.pages:
                 text = page.extract_text()
                 lines = text.split('\n')
